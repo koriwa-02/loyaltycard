@@ -426,21 +426,16 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 const params = new URLSearchParams(window.location.search);
 
-// Safari preserves # hash when saving to home screen — use it as primary storage
-const hashSerial = window.location.hash.replace('#', '') || null;
+// Read from URL params
 const querySerial = params.get('id') || null;
+const queryMerchant = params.get('merchant') || null;
 
-let cardSerial = hashSerial || querySerial || localStorage.getItem('my_card_serial') || null;
+// Persist to localStorage whenever present in URL
+if (querySerial)   localStorage.setItem('loyalty_card_serial', querySerial);
+if (queryMerchant) localStorage.setItem('loyalty_merchant', queryMerchant);
 
-// If we got serial from query param, redirect to hash version so home screen works on iPhone
-if (querySerial && !hashSerial) {
-  localStorage.setItem('my_card_serial', querySerial);
-  window.location.replace('card.html#' + querySerial);
-}
-
-if (cardSerial) {
-  localStorage.setItem('my_card_serial', cardSerial);
-}
+// Fallback to localStorage when launched from home screen (no URL params)
+let cardSerial = querySerial || localStorage.getItem('loyalty_card_serial') || null;
 
 let customer = null;
 let merchant = null;
