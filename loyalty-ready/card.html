@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My Card">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1D9E75">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="https://freesvg.org/img/coffee-cup-silhouette.png">
+<title>My Loyalty Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --brand: #1D9E75;
+    --ink: #0E0E0E;
+    --ink-muted: #6B6B6B;
+    --surface: #F4F3F0;
+    --card-bg: #FFFFFF;
+    --border: rgba(0,0,0,0.07);
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--surface);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 48px;
+    color: var(--ink);
+  }
+
+  /* ── LOADING ── */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    gap: 16px;
+    color: var(--ink-muted);
+    font-size: 14px;
+  }
+
+  .ring {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(0,0,0,0.08);
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── CARD ── */
+  .loyalty-card {
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 32px;
+    border-radius: 24px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    min-height: 200px;
+    color: #fff;
+  }
+
+  .loyalty-card::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+    pointer-events: none;
+  }
+
+  .loyalty-card::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; left: -40px;
+    width: 260px; height: 260px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+    pointer-events: none;
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card-shop {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+
+  .card-emoji { font-size: 28px; }
+
+  .card-name {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+    line-height: 1.1;
+  }
+
+  /* ── STAMPS ── */
+  .stamps-wrap {
+    position: relative;
+    z-index: 1;
+    margin-bottom: 20px;
+  }
+
+  .stamps-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .stamp {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .stamp.filled {
+    background: rgba(255,255,255,0.22);
+    border-color: rgba(255,255,255,0.8);
+  }
+
+  .card-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    position: relative;
+    z-index: 1;
+  }
+
+  .reward-label { font-size: 11px; opacity: 0.7; margin-bottom: 2px; font-weight: 300; }
+  .reward-value { font-size: 14px; font-weight: 600; }
+  .stamp-count  { font-size: 13px; opacity: 0.7; font-weight: 300; }
+
+  /* ── REWARD BANNER ── */
+  .reward-banner {
+    display: none;
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 12px;
+    padding: 14px 18px;
+    background: #FFF8E7;
+    border: 1.5px solid #FFD166;
+    border-radius: 16px;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .reward-banner-icon { font-size: 28px; }
+  .reward-banner-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: #92600A; }
+  .reward-banner-sub { font-size: 12px; color: #B07A20; margin-top: 2px; font-weight: 300; }
+
+  /* ── QR SECTION ── */
+  .qr-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    padding: 24px;
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .qr-label {
+    font-size: 13px;
+    color: var(--ink-muted);
+    text-align: center;
+    font-weight: 300;
+    line-height: 1.5;
+  }
+
+  .qr-label strong { color: var(--ink); font-weight: 500; }
+
+  #qr-box canvas, #qr-box img { border-radius: 8px; }
+
+  .serial-text {
+    font-family: monospace;
+    font-size: 11px;
+    color: var(--ink-muted);
+    background: var(--surface);
+    padding: 6px 12px;
+    border-radius: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── HISTORY ── */
+  .history-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    padding: 20px 20px 8px;
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 16px;
+  }
+
+  .history-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    color: var(--ink);
+  }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  .history-item:last-child { border: none; }
+
+  .h-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .h-dot.add    { background: #1D9E75; }
+  .h-dot.redeem { background: #F4A100; }
+
+  .h-label { font-size: 13px; font-weight: 500; flex: 1; color: var(--ink); }
+  .h-date  { font-size: 11px; color: var(--ink-muted); }
+
+  /* ── SHARE ── */
+  .share-btn {
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 16px;
+    padding: 15px;
+    border-radius: 14px;
+    border: 1.5px dashed rgba(0,0,0,0.15);
+    background: transparent;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .share-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+  /* ── NOT FOUND ── */
+  .not-found {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    gap: 12px;
+    text-align: center;
+    padding: 32px;
+  }
+
+  .not-found-icon { font-size: 48px; }
+  .not-found-title { font-family: var(--font-display); font-size: 22px; font-weight: 800; }
+  .not-found-sub { font-size: 14px; color: var(--ink-muted); font-weight: 300; }
+  .install-banner {
+    display: none;
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 16px;
+    padding: 14px 18px;
+    background: #0E0E0E;
+    border-radius: 16px;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .install-banner-left { display: flex; align-items: center; gap: 12px; }
+  .install-banner-icon { font-size: 24px; }
+  .install-banner-text { flex: 1; }
+  .install-banner-title { font-size: 13px; font-weight: 500; color: #fff; }
+  .install-banner-sub { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; font-weight: 300; }
+  .install-banner-btn { padding: 8px 16px; border-radius: 20px; border: none; background: var(--brand); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .ios-hint { display: none; width: calc(100% - 32px); max-width: 400px; margin-top: 12px; padding: 12px 16px; background: #0E0E0E; border-radius: 14px; font-size: 12px; color: rgba(255,255,255,0.7); text-align: center; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="ring"></div>
+  <span>Loading your card...</span>
+</div>
+
+<div id="main" style="display:none;width:100%;display:none;flex-direction:column;align-items:center;">
+
+  <!-- LOYALTY CARD -->
+  <div class="loyalty-card" id="loyalty-card">
+    <div class="card-top">
+      <div class="card-shop" id="c-shop">Café Atlas</div>
+      <div class="card-emoji" id="c-emoji">☕</div>
+    </div>
+    <div class="card-name" id="c-name">Ahmed Benali</div>
+    <div class="stamps-wrap">
+      <div class="stamps-grid" id="c-stamps"></div>
+    </div>
+    <div class="card-bottom">
+      <div>
+        <div class="reward-label">Reward</div>
+        <div class="reward-value" id="c-reward">1 free coffee</div>
+      </div>
+      <div class="stamp-count" id="c-count">0 / 10</div>
+    </div>
+  </div>
+
+  <!-- REWARD READY -->
+  <div class="reward-banner" id="reward-banner">
+    <div class="reward-banner-icon">🏆</div>
+    <div>
+      <div class="reward-banner-title">Reward ready!</div>
+      <div class="reward-banner-sub" id="reward-banner-sub">Show this to the cashier</div>
+    </div>
+  </div>
+
+  <!-- QR CODE -->
+  <div class="qr-card">
+    <div class="qr-label">Show this QR to the cashier<br><strong>at every visit</strong></div>
+    <div id="qr-box"></div>
+    <div class="serial-text" id="serial-text"></div>
+    <div class="qr-label" style="font-size:11px">Updated live — no refresh needed</div>
+  </div>
+
+  <!-- SCAN HISTORY -->
+  <div class="history-card" id="history-card">
+    <div class="history-title">Visit history</div>
+    <div id="history-list">
+      <div style="font-size:13px;color:var(--ink-muted);padding:8px 0;font-weight:300">No visits yet</div>
+    </div>
+  </div>
+
+  <!-- SHARE REFERRAL -->
+  <!-- Google Wallet Button -->
+  <button onclick="addToGoogleWallet()" id="gwallet-btn" style="width:calc(100% - 32px);max-width:400px;margin-top:16px;padding:15px;border-radius:14px;border:none;background:#000;color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background 0.15s;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+    Add to Google Wallet
+  </button>
+
+  <!-- Install banner (Android) -->
+  <div class="install-banner" id="install-banner">
+    <div class="install-banner-left">
+      <div class="install-banner-icon">📲</div>
+      <div class="install-banner-text">
+        <div class="install-banner-title">Add to home screen</div>
+        <div class="install-banner-sub">Access your card like an app</div>
+      </div>
+    </div>
+    <button class="install-banner-btn" id="install-btn">Add</button>
+  </div>
+
+  <!-- iOS hint -->
+  <div class="ios-hint" id="ios-hint">
+    Tap <strong style="color:#fff">Share</strong> then <strong style="color:#fff">"Add to Home Screen"</strong> to save your card as an app
+  </div>
+
+  <button class="share-btn" id="share-btn" onclick="shareReferral()">
+    🎁 Invite a friend — earn bonus stamps
+  </button>
+
+</div>
+
+<div class="not-found" id="not-found" style="display:none">
+  <div class="not-found-icon">🔍</div>
+  <div class="not-found-title">Card not found</div>
+  <div class="not-found-sub">Check your link and try again</div>
+</div>
+
+<script>
+const SUPABASE_URL  = 'https://lvzzcwsttvbaqsnuwdze.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const params = new URLSearchParams(window.location.search);
+let cardSerial = params.get('id') || localStorage.getItem('my_card_serial') || null;
+if (cardSerial) localStorage.setItem('my_card_serial', cardSerial);
+
+let customer = null;
+let merchant = null;
+let qrGenerated = false;
+
+async function init() {
+  if (!cardSerial) { showNotFound(); return; }
+
+  try {
+    // Load customer by card serial
+    const { data: c, error: ce } = await sb
+      .from('customers')
+      .select('*, merchants(*)')
+      .eq('card_serial', cardSerial)
+      .single();
+
+    if (ce || !c) { showNotFound(); return; }
+
+    customer = c;
+    merchant = c.merchants;
+
+    document.title = `${c.name} — ${merchant.name} Loyalty Card`;
+    document.documentElement.style.setProperty('--brand', merchant.brand_color);
+
+    renderCard();
+    loadHistory();
+    subscribeToUpdates();
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main').style.display = 'flex';
+
+  } catch(e) {
+    showNotFound();
+  }
+}
+
+function renderCard() {
+  const c = customer;
+  const m = merchant;
+
+  document.getElementById('c-shop').textContent   = m.name;
+  document.getElementById('c-emoji').textContent  = m.stamp_emoji;
+  document.getElementById('c-name').textContent   = c.name;
+  document.getElementById('c-reward').textContent = m.reward_label;
+  document.getElementById('c-count').textContent  = `${c.stamps} / ${m.total_stamps}`;
+  document.getElementById('loyalty-card').style.background = m.brand_color;
+
+  // Stamp dots
+  const grid = document.getElementById('c-stamps');
+  grid.innerHTML = '';
+  for (let i = 0; i < m.total_stamps; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'stamp' + (i < c.stamps ? ' filled' : '');
+    dot.textContent = i < c.stamps ? m.stamp_emoji : '';
+    grid.appendChild(dot);
+  }
+
+  // Reward banner
+  const banner = document.getElementById('reward-banner');
+  if (c.stamps >= m.total_stamps) {
+    banner.style.display = 'flex';
+    document.getElementById('reward-banner-sub').textContent = `You earned: ${m.reward_label}`;
+  } else {
+    banner.style.display = 'none';
+  }
+
+  // QR code — generate once
+  if (!qrGenerated) {
+    const qrData = JSON.stringify({ s: c.card_serial, m: m.id });
+    new QRCode(document.getElementById('qr-box'), {
+      text: qrData,
+      width: 200,
+      height: 200,
+      colorDark: '#0E0E0E',
+      colorLight: '#FFFFFF',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+    document.getElementById('serial-text').textContent = c.card_serial.slice(0, 20) + '...';
+    qrGenerated = true;
+  }
+}
+
+async function loadHistory() {
+  const { data } = await sb
+    .from('scan_events')
+    .select('action, stamps_delta, created_at')
+    .eq('customer_id', customer.id)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  const list = document.getElementById('history-list');
+  if (!data || data.length === 0) return;
+
+  list.innerHTML = '';
+  data.forEach(e => {
+    const date = new Date(e.created_at).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+    const isAdd = e.action === 'add_stamp';
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <div class="h-dot ${isAdd ? 'add' : 'redeem'}"></div>
+      <div class="h-label">${isAdd ? `+${e.stamps_delta} stamp` : '🎁 Reward redeemed'}</div>
+      <div class="h-date">${date}</div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+// Live updates — card refreshes automatically when cashier adds stamp
+function subscribeToUpdates() {
+  sb.channel('customer-' + customer.id)
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'customers',
+      filter: `id=eq.${customer.id}`
+    }, payload => {
+      customer = { ...customer, ...payload.new };
+      renderCard();
+      loadHistory();
+      // Flash the card
+      const card = document.getElementById('loyalty-card');
+      card.style.transform = 'scale(1.02)';
+      setTimeout(() => card.style.transform = 'scale(1)', 300);
+    })
+    .subscribe();
+}
+
+async function addToGoogleWallet() {
+  const btn = document.getElementById('gwallet-btn');
+  btn.textContent = 'Generating pass...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('https://lvzzcwsttvbaqsnuwdze.supabase.co/functions/v1/google-wallet-pass', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME'
+      },
+      body: JSON.stringify({ customer_id: customer.id })
+    });
+
+    const data = await res.json();
+    if (!data.saveUrl) throw new Error(data.error || 'Failed to generate pass');
+
+    window.location.href = data.saveUrl;
+
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Add to Google Wallet';
+    btn.disabled = false;
+  }
+}
+
+function shareReferral() {
+  const base = window.location.origin + window.location.pathname.replace('card.html', '02_enrollment.html');
+  const link = `${base}?merchant=${merchant.slug}&ref=${customer.referral_code}`;
+  if (navigator.share) {
+    navigator.share({ title: `Join ${merchant.name}`, text: 'Get a loyalty card and earn rewards!', url: link });
+  } else {
+    navigator.clipboard.writeText(link).then(() => alert('Referral link copied!'));
+  }
+}
+
+function showNotFound() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('not-found').style.display = 'flex';
+}
+
+init();
+
+// PWA install prompt
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').style.display = 'flex';
+});
+
+document.getElementById('install-btn') && document.getElementById('install-btn').addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('install-banner').style.display = 'none';
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-banner').style.display = 'none';
+});
+
+// iOS hint — show if on iOS and not already installed
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+if (isIOS && !isStandalone) {
+  document.getElementById('ios-hint').style.display = 'block';
+}
+</script>
+</body>
+</html>
