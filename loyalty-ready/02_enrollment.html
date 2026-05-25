@@ -776,7 +776,17 @@ async function submitForm() {
 
     if (error) {
       if (error.code === '23505') {
-        showError('You already have a card at this shop. Ask the cashier to look you up.');
+        // Find their existing card and redirect them to it
+        const lookup = phone
+          ? await sb.from('customers').select('card_serial').eq('merchant_id', merchant.id).eq('phone', phone).single()
+          : await sb.from('customers').select('card_serial').eq('merchant_id', merchant.id).eq('email', email).single();
+
+        if (lookup.data?.card_serial) {
+          const cardUrl = window.location.href.replace('02_enrollment.html', 'card.html').split('?')[0] + '?id=' + lookup.data.card_serial;
+          window.location.href = cardUrl;
+          return;
+        }
+        showError('You already have a card at this shop.');
       } else {
         throw error;
       }
