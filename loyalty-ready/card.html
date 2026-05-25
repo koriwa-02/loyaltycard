@@ -416,8 +416,22 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 const params = new URLSearchParams(window.location.search);
-let cardSerial = params.get('id') || localStorage.getItem('my_card_serial') || null;
-if (cardSerial) localStorage.setItem('my_card_serial', cardSerial);
+
+// Safari preserves # hash when saving to home screen — use it as primary storage
+const hashSerial = window.location.hash.replace('#', '') || null;
+const querySerial = params.get('id') || null;
+
+let cardSerial = hashSerial || querySerial || localStorage.getItem('my_card_serial') || null;
+
+// If we got serial from query param, redirect to hash version so home screen works on iPhone
+if (querySerial && !hashSerial) {
+  localStorage.setItem('my_card_serial', querySerial);
+  window.location.replace('card.html#' + querySerial);
+}
+
+if (cardSerial) {
+  localStorage.setItem('my_card_serial', cardSerial);
+}
 
 let customer = null;
 let merchant = null;
