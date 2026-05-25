@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Join — Loyalty Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --brand: #1D9E75;
+    --brand-dark: #0F6E56;
+    --brand-light: #E1F5EE;
+    --ink: #0E0E0E;
+    --ink-muted: #6B6B6B;
+    --surface: #F7F6F3;
+    --card-bg: #FFFFFF;
+    --border: rgba(0,0,0,0.08);
+    --radius: 16px;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--surface);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 0 60px;
+    color: var(--ink);
+  }
+
+  /* ── HERO BANNER ── */
+  .hero {
+    width: 100%;
+    padding: 48px 24px 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--brand);
+    clip-path: ellipse(110% 100% at 50% 0%);
+    z-index: 0;
+  }
+
+  .hero-emoji {
+    font-size: 52px;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  .hero-shop {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    letter-spacing: -0.02em;
+  }
+
+  .hero-sub {
+    font-size: 15px;
+    color: rgba(255,255,255,0.82);
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    font-weight: 300;
+  }
+
+  /* ── REWARD PILL ── */
+  .reward-pill {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    border-radius: 100px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .reward-pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #fff;
+    opacity: 0.7;
+  }
+
+  /* ── FORM CARD ── */
+  .form-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 28px 24px;
+    width: calc(100% - 32px);
+    max-width: 420px;
+    margin-top: -24px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .form-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+  }
+
+  .form-subtitle {
+    font-size: 13px;
+    color: var(--ink-muted);
+    margin-bottom: 24px;
+    font-weight: 300;
+  }
+
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  label {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+
+  label .req { color: var(--brand); }
+
+  input {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    font-family: var(--font-body);
+    font-size: 16px;
+    background: var(--surface);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    -webkit-appearance: none;
+  }
+
+  input:focus {
+    border-color: var(--brand);
+    background: #fff;
+  }
+
+  input::placeholder { color: #B0B0B0; }
+
+  .referral-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    font-size: 14px;
+    color: var(--ink-muted);
+  }
+
+  .referral-icon { font-size: 18px; }
+
+  /* ── SUBMIT BUTTON ── */
+  .submit-btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 12px;
+    background: var(--brand);
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+    letter-spacing: -0.01em;
+    transition: background 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .submit-btn:hover { background: var(--brand-dark); }
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .legal {
+    font-size: 11px;
+    color: var(--ink-muted);
+    text-align: center;
+    margin-top: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── ERROR ── */
+  .error-msg {
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    color: #B91C1C;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: none;
+  }
+
+  /* ── SUCCESS STATE ── */
+  .success-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    text-align: center;
+    padding: 0 16px;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .success-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 28px 24px;
+    width: 100%;
+  }
+
+  .success-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: var(--brand-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin: 0 auto 16px;
+    animation: pop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes pop {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .success-title {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+  }
+
+  .success-sub {
+    font-size: 14px;
+    color: var(--ink-muted);
+    margin-bottom: 24px;
+    font-weight: 300;
+    line-height: 1.6;
+  }
+
+  /* ── DIGITAL CARD PREVIEW ── */
+  .card-preview {
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 20px;
+    min-height: 160px;
+  }
+
+  .card-preview::after {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+  }
+
+  .card-preview::before {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: -20px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+  }
+
+  .card-shop-name {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card-customer-name {
+    font-size: 22px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .stamps-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .stamp-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+
+  .stamp-dot.filled {
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.8);
+  }
+
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card-reward-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.75);
+    font-weight: 300;
+  }
+
+  .card-reward-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  /* ── QR CODE ── */
+  .qr-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 14px;
+  }
+
+  .qr-label {
+    font-size: 12px;
+    color: var(--ink-muted);
+    text-align: center;
+    font-weight: 300;
+  }
+
+  #qr-container canvas, #qr-container img {
+    border-radius: 8px;
+  }
+
+  /* ── WALLET BUTTONS ── */
+  .wallet-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .wallet-btn {
+    width: 100%;
+    padding: 14px 20px;
+    border-radius: 12px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--ink);
+    transition: background 0.15s, border-color 0.15s;
+    text-decoration: none;
+  }
+
+  .wallet-btn.apple {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+  }
+
+  .wallet-btn.apple:hover { background: #222; }
+
+  .wallet-btn.google:hover { background: #EBEBEB; }
+
+  .wallet-btn img { height: 20px; }
+
+  /* ── REFERRAL SHARE ── */
+  .referral-box {
+    background: var(--brand-light);
+    border-radius: 14px;
+    padding: 16px 18px;
+    width: 100%;
+    text-align: left;
+  }
+
+  .referral-box-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--brand-dark);
+    margin-bottom: 4px;
+  }
+
+  .referral-box-sub {
+    font-size: 12px;
+    color: var(--brand-dark);
+    opacity: 0.8;
+    margin-bottom: 12px;
+    font-weight: 300;
+  }
+
+  .referral-link-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .referral-link-input {
+    flex: 1;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(15,110,86,0.2);
+    background: rgba(255,255,255,0.7);
+    font-size: 12px;
+    font-family: monospace;
+    color: var(--brand-dark);
+    outline: none;
+  }
+
+  .copy-btn {
+    padding: 9px 14px;
+    border-radius: 8px;
+    border: none;
+    background: var(--brand);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  .copy-btn:hover { background: var(--brand-dark); }
+
+  /* ── LOADING STATE ── */
+  .loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    gap: 16px;
+    color: var(--ink-muted);
+    font-size: 14px;
+  }
+
+  .loading-ring {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-screen" id="loading">
+  <div class="loading-ring"></div>
+  <span>Loading your card...</span>
+</div>
+
+<!-- ENROLLMENT FORM -->
+<div id="enroll-view" style="display:none; width:100%; display:none; flex-direction:column; align-items:center;">
+
+  <div class="hero" id="hero-section">
+    <div class="hero-emoji" id="hero-emoji">☕</div>
+    <div class="hero-shop" id="hero-shop">Loading...</div>
+    <div class="hero-sub">Join our loyalty program</div>
+    <div class="reward-pill">
+      <div class="dot"></div>
+      Collect <span id="hero-stamps">10</span> stamps → win <span id="hero-reward">free coffee</span>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-title">Create your card</div>
+    <div class="form-subtitle">Takes 30 seconds. No app download needed.</div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <div class="field-group">
+      <div class="field">
+        <label>Full name <span class="req">*</span></label>
+        <input type="text" id="name" placeholder="Ahmed Benali" autocomplete="name" required>
+      </div>
+
+      <div class="field">
+        <label>Phone number <span class="req">*</span></label>
+        <input type="tel" id="phone" placeholder="+212 6 12 34 56 78" autocomplete="tel">
+      </div>
+
+      <div class="field">
+        <label>Email <span style="color:var(--ink-muted);font-weight:300">(optional)</span></label>
+        <input type="email" id="email" placeholder="ahmed@example.com" autocomplete="email">
+      </div>
+
+      <div class="field">
+        <label>Birthday <span style="color:var(--ink-muted);font-weight:300">(for a surprise)</span></label>
+        <input type="date" id="birthday">
+      </div>
+
+      <div id="referral-display" style="display:none">
+        <div class="referral-field">
+          <span class="referral-icon">🎁</span>
+          <span>Invited by a friend — you'll both earn bonus stamps!</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitForm()">
+      <span id="btn-text">Get my loyalty card</span>
+    </button>
+
+    <p class="legal">By joining you agree to receive loyalty updates from this shop. No spam, ever.</p>
+  </div>
+</div>
+
+<!-- SUCCESS / CARD VIEW -->
+<div class="success-screen" id="success-view">
+
+  <div style="width:100%;max-width:420px;padding:0 16px;">
+    <div class="hero" style="border-radius:20px;margin-bottom:16px;padding:32px 24px 28px;">
+      <div class="hero-emoji" id="s-emoji" style="font-size:44px">☕</div>
+      <div class="hero-shop" id="s-shop">Your Card Is Ready!</div>
+      <div class="hero-sub">Save it to your phone wallet</div>
+    </div>
+  </div>
+
+  <div class="success-card" style="width:calc(100% - 32px);max-width:420px;">
+
+    <!-- Loyalty card preview -->
+    <div class="card-preview" id="card-preview-bg" style="background:#1D9E75">
+      <div class="card-shop-name" id="cp-shop">Café Atlas</div>
+      <div class="card-customer-name" id="cp-name">Ahmed Benali</div>
+      <div class="stamps-row" id="cp-stamps"></div>
+      <div class="card-footer">
+        <div>
+          <div class="card-reward-label">Reward</div>
+          <div class="card-reward-value" id="cp-reward">1 free coffee</div>
+        </div>
+        <div style="color:rgba(255,255,255,0.6);font-size:11px" id="cp-count">0 / 10 stamps</div>
+      </div>
+    </div>
+
+    <!-- QR code -->
+    <div class="qr-section">
+      <div class="qr-label">Show this QR to the cashier at each visit</div>
+      <div id="qr-container"></div>
+      <div class="qr-label" id="qr-serial" style="font-family:monospace;font-size:11px"></div>
+    </div>
+  </div>
+
+  <!-- Wallet buttons -->
+  <div class="wallet-btns" style="width:calc(100% - 32px);max-width:420px;">
+    <button class="wallet-btn apple" id="apple-wallet-btn" onclick="addToAppleWallet()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+      Add to Apple Wallet
+    </button>
+    <button class="wallet-btn google" id="google-wallet-btn" onclick="addToGoogleWallet()">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Add to Google Wallet
+    </button>
+    <button class="wallet-btn" onclick="shareCard()" style="border-style:dashed">
+      📤 Share my card link
+    </button>
+  </div>
+
+  <!-- Referral box -->
+  <div class="referral-box" style="width:calc(100% - 32px);max-width:420px;" id="referral-box">
+    <div class="referral-box-title">🎁 Invite friends, earn stamps</div>
+    <div class="referral-box-sub">Share your link. Every friend who joins earns you 2 bonus stamps.</div>
+    <div class="referral-link-row">
+      <input class="referral-link-input" id="referral-link-input" readonly>
+      <button class="copy-btn" onclick="copyReferral()">Copy</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// CONFIG — replace with your Supabase credentials
+// ─────────────────────────────────────────────
+const SUPABASE_URL  = 'https://lvzzcwsttvbaqsnuwdze.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME';
+const BASE_URL      = window.location.origin + window.location.pathname;
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ─────────────────────────────────────────────
+// INIT — read ?merchant=slug and ?ref=code from URL
+// ─────────────────────────────────────────────
+const params      = new URLSearchParams(window.location.search);
+const merchantSlug = params.get('merchant') || 'cafe-atlas-demo';
+const referralCode = params.get('ref') || null;
+
+let merchant = null;
+let newCustomer = null;
+
+async function init() {
+  try {
+    const { data, error } = await sb
+      .from('merchants')
+      .select('*')
+      .eq('slug', merchantSlug)
+      .eq('active', true)
+      .single();
+
+    if (error || !data) throw new Error('Shop not found');
+    merchant = data;
+
+    // Apply branding
+    document.title = `Join ${merchant.name} — Loyalty Card`;
+    document.querySelector('#hero-shop').textContent = merchant.name;
+    document.querySelector('#hero-emoji').textContent = merchant.stamp_emoji;
+    document.querySelector('#hero-stamps').textContent = merchant.total_stamps;
+    document.querySelector('#hero-reward').textContent = merchant.reward_label;
+    document.querySelector('#s-emoji').textContent = merchant.stamp_emoji;
+    document.querySelector('#s-shop').textContent = merchant.name;
+    document.documentElement.style.setProperty('--brand', merchant.brand_color);
+
+    if (referralCode) {
+      document.querySelector('#referral-display').style.display = 'block';
+    }
+
+    document.querySelector('#loading').style.display = 'none';
+    document.querySelector('#enroll-view').style.display = 'flex';
+
+  } catch(e) {
+    document.querySelector('#loading').innerHTML = `
+      <div style="text-align:center;padding:40px 24px">
+        <div style="font-size:40px;margin-bottom:16px">🔍</div>
+        <div style="font-size:18px;font-weight:600;margin-bottom:8px">Shop not found</div>
+        <div style="font-size:14px;color:#888">Check the link and try again.</div>
+      </div>`;
+  }
+}
+
+// ─────────────────────────────────────────────
+// FORM SUBMIT
+// ─────────────────────────────────────────────
+async function submitForm() {
+  const name     = document.querySelector('#name').value.trim();
+  const phone    = document.querySelector('#phone').value.trim();
+  const email    = document.querySelector('#email').value.trim();
+  const birthday = document.querySelector('#birthday').value || null;
+  const errEl    = document.querySelector('#error-msg');
+  const btn      = document.querySelector('#submit-btn');
+  const btnText  = document.querySelector('#btn-text');
+
+  errEl.style.display = 'none';
+
+  if (!name) { showError('Please enter your name.'); return; }
+  if (!phone && !email) { showError('Please enter a phone number or email.'); return; }
+
+  // Loading state
+  btn.disabled = true;
+  btnText.style.display = 'none';
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    // Find referrer
+    let referredById = null;
+    if (referralCode) {
+      const { data: referrer } = await sb
+        .from('customers')
+        .select('id')
+        .eq('referral_code', referralCode)
+        .eq('merchant_id', merchant.id)
+        .single();
+      if (referrer) referredById = referrer.id;
+    }
+
+    // Insert customer
+    const { data: customer, error } = await sb
+      .from('customers')
+      .insert({
+        merchant_id:  merchant.id,
+        name,
+        phone:        phone || null,
+        email:        email || null,
+        birthday:     birthday,
+        referred_by:  referredById,
+        stamps:       referredById ? 1 : 0,  // bonus stamp if referred
+        lifetime_stamps: referredById ? 1 : 0
+      })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        showError('You already have a card at this shop. Ask the cashier to look you up.');
+      } else {
+        throw error;
+      }
+      btn.disabled = false;
+      btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
+      return;
+    }
+
+    // Bonus stamps for referrer (Phase 3: trigger via DB function)
+    if (referredById) {
+      await sb.rpc('add_stamp', {
+        p_customer_id: referredById,
+        p_cashier_id: null,
+        p_merchant_id: merchant.id
+      });
+    }
+
+    newCustomer = customer;
+    showSuccess();
+
+  } catch(e) {
+    showError('Something went wrong. Please try again.');
+    btn.disabled = false;
+    btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
+  }
+}
+
+function showError(msg) {
+  const el = document.querySelector('#error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ─────────────────────────────────────────────
+// SUCCESS / CARD VIEW
+// ─────────────────────────────────────────────
+function showSuccess() {
+  document.querySelector('#enroll-view').style.display = 'none';
+  const sv = document.querySelector('#success-view');
+  sv.style.display = 'flex';
+  sv.scrollIntoView({ behavior: 'smooth' });
+
+  // Populate card preview
+  document.querySelector('#cp-shop').textContent   = merchant.name;
+  document.querySelector('#cp-name').textContent   = newCustomer.name;
+  document.querySelector('#cp-reward').textContent = merchant.reward_label;
+  document.querySelector('#cp-count').textContent  = `${newCustomer.stamps} / ${merchant.total_stamps} stamps`;
+  document.querySelector('#card-preview-bg').style.background = merchant.brand_color;
+
+  // Stamp dots
+  const stampsRow = document.querySelector('#cp-stamps');
+  for (let i = 0; i < merchant.total_stamps; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'stamp-dot' + (i < newCustomer.stamps ? ' filled' : '');
+    dot.textContent = i < newCustomer.stamps ? merchant.stamp_emoji : '';
+    stampsRow.appendChild(dot);
+  }
+
+  // QR code — encodes the card serial (scanned by cashier app)
+  const qrData = JSON.stringify({
+    s: newCustomer.card_serial,
+    m: merchant.id
+  });
+
+  document.querySelector('#qr-serial').textContent = newCustomer.card_serial.slice(0, 16) + '...';
+
+  new QRCode(document.querySelector('#qr-container'), {
+    text: qrData,
+    width: 180,
+    height: 180,
+    colorDark: '#0E0E0E',
+    colorLight: '#FFFFFF',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+
+  // Referral link
+  const refLink = `${BASE_URL}?merchant=${merchant.slug}&ref=${newCustomer.referral_code}`;
+  document.querySelector('#referral-link-input').value = refLink;
+}
+
+// ─────────────────────────────────────────────
+// WALLET INTEGRATION (Phase 2 — stubs for now)
+// ─────────────────────────────────────────────
+async function addToAppleWallet() {
+  // Phase 2: call your backend to generate + sign .pkpass
+  // const res = await fetch(`/api/wallet/apple?customer=${newCustomer.id}`);
+  // const blob = await res.blob();
+  // const url = URL.createObjectURL(blob);
+  // window.location.href = url;
+  alert('🍎 Apple Wallet integration is Phase 2.\nWill call: POST /api/wallet/apple-pass\nReturns: signed .pkpass file');
+}
+
+async function addToGoogleWallet() {
+  // Phase 2: call your backend to create Google Wallet pass JWT
+  // const res = await fetch(`/api/wallet/google?customer=${newCustomer.id}`);
+  // const { saveUrl } = await res.json();
+  // window.location.href = saveUrl;
+  alert('🤖 Google Wallet integration is Phase 2.\nWill call: POST /api/wallet/google-pass\nReturns: Google save URL');
+}
+
+async function shareCard() {
+  const shareData = {
+    title: `My ${merchant.name} loyalty card`,
+    text: `Join me at ${merchant.name}! We both earn stamps.`,
+    url: `${BASE_URL}?merchant=${merchant.slug}&ref=${newCustomer.referral_code}`
+  };
+  if (navigator.share) {
+    await navigator.share(shareData);
+  } else {
+    copyReferral();
+    alert('Link copied! Share it with friends.');
+  }
+}
+
+async function copyReferral() {
+  const input = document.querySelector('#referral-link-input');
+  await navigator.clipboard.writeText(input.value).catch(() => {
+    input.select(); document.execCommand('copy');
+  });
+  const btn = document.querySelector('.copy-btn');
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy', 2000);
+}
+
+// ─────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
