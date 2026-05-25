@@ -805,8 +805,17 @@ async function submitForm() {
     }
 
     newCustomer = customer;
-    // Save serial to localStorage so home screen app works without ?id= param
     localStorage.setItem('my_card_serial', customer.card_serial);
+    
+    // Open WhatsApp with card link so customer can save it to themselves
+    const cardLink = window.location.origin + window.location.pathname.replace('02_enrollment.html', 'card.html') + '?id=' + customer.card_serial;
+    const waMsg = encodeURIComponent('🎉 Your loyalty card for ' + merchant.name + ' is ready!\n\nTap this link anytime to check your stamps:\n' + cardLink + '\n\nSave this message so you never lose it!');
+    const waUrl = 'https://wa.me/?text=' + waMsg;
+    
+    setTimeout(() => {
+      window.open(waUrl, '_blank');
+    }, 1000);
+    
     showSuccess();
 
   } catch(e) {
