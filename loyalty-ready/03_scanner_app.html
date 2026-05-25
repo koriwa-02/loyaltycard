@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0E0E0E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Scanner — Cashier App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root {
+    --ink: #FFFFFF;
+    --ink-muted: rgba(255,255,255,0.55);
+    --surface: #0E0E0E;
+    --card: #1A1A1A;
+    --card2: #242424;
+    --border: rgba(255,255,255,0.08);
+    --brand: #1D9E75;
+    --brand-dark: #0F6E56;
+    --danger: #E24B4A;
+    --danger-bg: rgba(226,75,74,0.12);
+    --success: #1D9E75;
+    --success-bg: rgba(29,158,117,0.12);
+    --radius: 18px;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--surface);
+    color: var(--ink);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+    overflow-x: hidden;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 0.5px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--surface);
+  }
+
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+
+  .shop-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--brand);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .topbar-shop {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .topbar-right { display: flex; gap: 8px; align-items: center; }
+
+  .icon-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    border: 0.5px solid var(--border);
+    background: var(--card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--ink-muted);
+    transition: background 0.15s;
+  }
+
+  .icon-btn:hover { background: var(--card2); }
+
+  /* ── LOGIN SCREEN ── */
+  .login-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    gap: 24px;
+  }
+
+  .login-logo {
+    font-size: 48px;
+    text-align: center;
+  }
+
+  .login-title {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 800;
+    text-align: center;
+    letter-spacing: -0.02em;
+  }
+
+  .login-sub {
+    font-size: 14px;
+    color: var(--ink-muted);
+    text-align: center;
+    margin-top: -16px;
+    font-weight: 300;
+  }
+
+  .login-input {
+    width: 100%;
+    padding: 14px 18px;
+    background: var(--card);
+    border: 0.5px solid var(--border);
+    border-radius: 14px;
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .login-input:focus { border-color: var(--brand); }
+  .login-input::placeholder { color: var(--ink-muted); }
+
+  .login-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--brand);
+    border: none;
+    border-radius: 14px;
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .login-btn:hover { background: var(--brand-dark); }
+  .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── MAIN APP ── */
+  .app-main {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  /* ── SCANNER AREA ── */
+  .scanner-section {
+    position: relative;
+    background: #000;
+    overflow: hidden;
+  }
+
+  #qr-reader {
+    width: 100%;
+  }
+
+  #qr-reader video {
+    width: 100% !important;
+    object-fit: cover;
+  }
+
+  /* Custom overlay on scanner */
+  .scan-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .scan-frame {
+    width: 220px;
+    height: 220px;
+    position: relative;
+  }
+
+  .scan-frame::before,
+  .scan-frame::after {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-color: var(--brand);
+    border-style: solid;
+  }
+
+  .scan-frame::before {
+    top: 0; left: 0;
+    border-width: 3px 0 0 3px;
+    border-radius: 4px 0 0 0;
+  }
+
+  .scan-frame::after {
+    top: 0; right: 0;
+    border-width: 3px 3px 0 0;
+    border-radius: 0 4px 0 0;
+  }
+
+  .scan-frame-b::before,
+  .scan-frame-b::after {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-color: var(--brand);
+    border-style: solid;
+  }
+
+  .scan-frame-b::before {
+    bottom: 0; left: 0;
+    border-width: 0 0 3px 3px;
+    border-radius: 0 0 0 4px;
+  }
+
+  .scan-frame-b::after {
+    bottom: 0; right: 0;
+    border-width: 0 3px 3px 0;
+    border-radius: 0 0 4px 0;
+  }
+
+  .scan-line {
+    position: absolute;
+    left: 10px; right: 10px;
+    height: 2px;
+    background: var(--brand);
+    border-radius: 1px;
+    animation: scan 2s ease-in-out infinite;
+    opacity: 0.7;
+  }
+
+  @keyframes scan {
+    0% { top: 10px; }
+    50% { top: calc(100% - 12px); }
+    100% { top: 10px; }
+  }
+
+  .scan-hint {
+    position: absolute;
+    bottom: 16px;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 300;
+  }
+
+  /* ── RESULT CARD ── */
+  .result-section {
+    flex: 1;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+
+  .result-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border);
+    overflow: hidden;
+    display: none;
+  }
+
+  .result-header {
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  .customer-avatar {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .customer-name {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .customer-meta {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-top: 2px;
+    font-weight: 300;
+  }
+
+  /* ── STAMP PROGRESS ── */
+  .stamp-progress {
+    padding: 16px 18px;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+
+  .progress-label {
+    font-size: 12px;
+    color: var(--ink-muted);
+    font-weight: 300;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .progress-count {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .stamps-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .s-dot {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .s-dot.filled {
+    border-color: var(--brand);
+    background: rgba(29,158,117,0.15);
+  }
+
+  .s-dot.new {
+    animation: stamp-in 0.5s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes stamp-in {
+    0% { transform: scale(0.3); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── ACTION BUTTONS ── */
+  .action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  .action-btn {
+    padding: 16px 12px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-body);
+    color: var(--ink);
+    transition: background 0.15s;
+  }
+
+  .action-btn:first-child {
+    border-right: 0.5px solid var(--border);
+  }
+
+  .action-btn:hover { background: var(--card2); }
+  .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .action-btn-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .action-btn-icon.stamp { background: var(--success-bg); }
+  .action-btn-icon.redeem { background: rgba(255,175,0,0.12); }
+
+  .action-btn-label {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .action-btn-sub {
+    font-size: 11px;
+    color: var(--ink-muted);
+    font-weight: 300;
+  }
+
+  /* ── REWARD READY ── */
+  .reward-banner {
+    display: none;
+    margin: 0 16px;
+    padding: 14px 18px;
+    background: rgba(255,175,0,0.1);
+    border: 1px solid rgba(255,175,0,0.3);
+    border-radius: 14px;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .reward-banner-icon { font-size: 28px; flex-shrink: 0; }
+
+  .reward-banner-text { flex: 1; }
+
+  .reward-banner-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    color: #FFB800;
+    margin-bottom: 2px;
+  }
+
+  .reward-banner-sub {
+    font-size: 12px;
+    color: rgba(255,184,0,0.75);
+    font-weight: 300;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: var(--card2);
+    border: 0.5px solid var(--border);
+    border-radius: 100px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .toast.success { border-color: rgba(29,158,117,0.4); color: #5DCAA5; }
+  .toast.error   { border-color: rgba(226,75,74,0.4); color: #F09595; }
+
+  /* ── SCAN LOG ── */
+  .log-section {
+    padding: 0 16px 16px;
+  }
+
+  .log-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-muted);
+    padding: 12px 2px 8px;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  .log-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .log-dot.add    { background: var(--success); }
+  .log-dot.redeem { background: #FFB800; }
+
+  .log-customer { font-size: 13px; font-weight: 500; flex: 1; }
+  .log-action   { font-size: 11px; color: var(--ink-muted); }
+  .log-time     { font-size: 11px; color: var(--ink-muted); white-space: nowrap; }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  .stat {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 10px;
+    text-align: center;
+  }
+
+  .stat-number {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--ink-muted);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+
+  /* ── IDLE STATE ── */
+  .idle-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+    gap: 8px;
+    color: var(--ink-muted);
+    font-size: 14px;
+    font-weight: 300;
+    text-align: center;
+  }
+
+  .idle-icon { font-size: 32px; margin-bottom: 4px; }
+
+  /* ── SPINNER ── */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── LOGIN SCREEN ── -->
+<div class="login-screen" id="login-screen">
+  <div class="login-logo" id="login-emoji">🔑</div>
+  <div>
+    <div class="login-title">Cashier Sign In</div>
+    <div class="login-sub" style="margin-top:6px">Enter your shop PIN to start scanning</div>
+  </div>
+
+  <div style="width:100%;display:flex;flex-direction:column;gap:12px;">
+    <input class="login-input" type="text" id="login-slug" placeholder="Shop code (e.g. cafe-atlas)" value="">
+    <input class="login-input" type="number" id="login-pin" placeholder="4-digit PIN" maxlength="4" inputmode="numeric">
+    <input class="login-input" type="text" id="login-name" placeholder="Your name (e.g. Karim)" autocomplete="name">
+  </div>
+
+  <button class="login-btn" id="login-btn" onclick="doLogin()">Start scanning</button>
+
+  <div style="font-size:12px;color:var(--ink-muted);text-align:center;font-weight:300">
+    Ask your manager for the shop code and your PIN
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div class="app-main" id="app-main">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="shop-dot" id="live-dot"></div>
+      <div class="topbar-shop" id="topbar-shop">Loading...</div>
+    </div>
+    <div class="topbar-right">
+      <div style="font-size:12px;color:var(--ink-muted)" id="cashier-label">Cashier</div>
+      <div class="icon-btn" onclick="doLogout()" title="Logout">✕</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-number" id="stat-scans">0</div>
+      <div class="stat-label">Scans today</div>
+    </div>
+    <div class="stat">
+      <div class="stat-number" id="stat-rewards">0</div>
+      <div class="stat-label">Rewards given</div>
+    </div>
+    <div class="stat">
+      <div class="stat-number" id="stat-customers">0</div>
+      <div class="stat-label">Customers</div>
+    </div>
+  </div>
+
+  <!-- Camera / QR scanner -->
+  <div class="scanner-section">
+    <div id="qr-reader"></div>
+    <div class="scan-overlay">
+      <div class="scan-frame">
+        <div class="scan-frame-b"></div>
+        <div class="scan-line"></div>
+      </div>
+    </div>
+    <div class="scan-hint">Point camera at customer's QR code</div>
+  </div>
+
+  <!-- Reward ready banner -->
+  <div class="reward-banner" id="reward-banner">
+    <div class="reward-banner-icon">🏆</div>
+    <div class="reward-banner-text">
+      <div class="reward-banner-title">Reward ready to redeem!</div>
+      <div class="reward-banner-sub" id="reward-banner-label">Free coffee</div>
+    </div>
+  </div>
+
+  <!-- Customer result card -->
+  <div class="result-section">
+    <div class="result-card" id="result-card">
+
+      <div class="result-header">
+        <div class="customer-avatar" id="cust-avatar" style="background:#1D9E751A;color:#1D9E75">AB</div>
+        <div>
+          <div class="customer-name" id="cust-name">Ahmed Benali</div>
+          <div class="customer-meta" id="cust-meta">Member since Jan 2025 · 12 visits</div>
+        </div>
+      </div>
+
+      <div class="stamp-progress">
+        <div class="progress-header">
+          <span class="progress-label">Stamps collected</span>
+          <span class="progress-count" id="cust-stamp-count">0 / 10</span>
+        </div>
+        <div class="stamps-grid" id="cust-stamps-grid"></div>
+      </div>
+
+      <div class="action-buttons">
+        <button class="action-btn" id="btn-add-stamp" onclick="doAddStamp()">
+          <div class="action-btn-icon stamp">+</div>
+          <div class="action-btn-label">Add stamp</div>
+          <div class="action-btn-sub" id="btn-add-sub">+1 stamp</div>
+        </button>
+        <button class="action-btn" id="btn-redeem" onclick="doRedeem()">
+          <div class="action-btn-icon redeem">🎁</div>
+          <div class="action-btn-label">Redeem reward</div>
+          <div class="action-btn-sub" id="btn-redeem-sub">Reset to 0</div>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Idle state -->
+    <div class="idle-state" id="idle-state">
+      <div class="idle-icon">📱</div>
+      <div>Waiting for customer QR scan</div>
+      <div style="font-size:12px;margin-top:4px">Ask the customer to open their wallet card</div>
+    </div>
+
+    <!-- Scan log -->
+    <div class="log-section">
+      <div class="log-title">Recent scans</div>
+      <div id="scan-log"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────
+const SUPABASE_URL  = 'https://lvzzcwsttvbaqsnuwdze.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let merchant = null;
+let cashier  = null;
+let currentCustomer = null;
+let scanner  = null;
+let scanLocked = false;  // prevents double-scan
+let sessionStats = { scans: 0, rewards: 0, customers: new Set() };
+
+// ─────────────────────────────────────────────
+// LOGIN
+// ─────────────────────────────────────────────
+async function doLogin() {
+  const slug = document.querySelector('#login-slug').value.trim();
+  const pin  = document.querySelector('#login-pin').value.trim();
+  const name = document.querySelector('#login-name').value.trim();
+  const btn  = document.querySelector('#login-btn');
+
+  if (!slug || !name) { toast('Fill shop code and your name', 'error'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    // Load merchant
+    const { data: m, error: me } = await sb
+      .from('merchants')
+      .select('*')
+      .eq('slug', slug)
+      .eq('active', true)
+      .single();
+
+    if (me || !m) throw new Error('DB error: ' + (me?.message || 'null data') + ' slug=' + slug);
+    merchant = m;
+
+    // Verify PIN against cashiers table
+    // For demo: any PIN works — in production, check cashiers table
+    const { data: c } = await sb
+      .from('cashiers')
+      .select('*')
+      .eq('merchant_id', merchant.id)
+      .eq('pin', pin)
+      .eq('active', true)
+      .maybeSingle();
+
+    // For demo mode — allow any PIN if no cashiers exist yet
+    cashier = c || { id: null, name, merchant_id: merchant.id };
+
+    // Apply branding
+    document.querySelector('#topbar-shop').textContent = merchant.name;
+    document.querySelector('#cashier-label').textContent = cashier.name;
+    document.querySelector('#btn-add-sub').textContent = `+${merchant.points_per_visit} stamp`;
+    document.querySelector('#btn-redeem-sub').textContent = merchant.reward_label;
+    document.querySelector('#reward-banner-label').textContent = merchant.reward_label;
+
+    // Save session
+    sessionStorage.setItem('cashier_session', JSON.stringify({ merchant, cashier }));
+
+    showApp();
+
+  } catch(e) {
+    toast(e.message || 'Login failed', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Start scanning';
+  }
+}
+
+function doLogout() {
+  if (!confirm('End this scanning session?')) return;
+  sessionStorage.removeItem('cashier_session');
+  if (scanner) scanner.stop();
+  document.querySelector('#login-screen').style.display = 'flex';
+  document.querySelector('#app-main').style.display = 'none';
+}
+
+// ─────────────────────────────────────────────
+// SHOW APP + START SCANNER
+// ─────────────────────────────────────────────
+async function showApp() {
+  document.querySelector('#login-screen').style.display = 'none';
+  const app = document.querySelector('#app-main');
+  app.style.display = 'flex';
+
+  await startScanner();
+  loadScanLog();
+  loadStats();
+}
+
+// ─────────────────────────────────────────────
+// QR SCANNER
+// ─────────────────────────────────────────────
+async function startScanner() {
+  scanner = new Html5Qrcode('qr-reader');
+
+  const config = {
+    fps: 10,
+    qrbox: { width: 220, height: 220 },
+    aspectRatio: 1.0,
+    showTorchButtonIfSupported: true,
+    showZoomSliderIfSupported: false,
+    defaultZoomValueIfSupported: 1
+  };
+
+  try {
+    await scanner.start(
+      { facingMode: 'environment' },  // rear camera
+      config,
+      onQRScanned,
+      () => {}  // suppress scan-fail noise
+    );
+
+    // Hide html5-qrcode default UI clutter
+    setTimeout(() => {
+      document.querySelectorAll('#qr-reader__dashboard_section, #qr-reader__header_message').forEach(el => {
+        if (el) el.style.display = 'none';
+      });
+    }, 500);
+
+  } catch(e) {
+    toast('Camera access denied — check permissions', 'error');
+  }
+}
+
+// ─────────────────────────────────────────────
+// QR SCAN HANDLER
+// ─────────────────────────────────────────────
+async function onQRScanned(rawQR) {
+  if (scanLocked) return;
+  scanLocked = true;
+
+  let parsed;
+  try {
+    parsed = JSON.parse(rawQR);
+  } catch(e) {
+    toast('Invalid QR code', 'error');
+    setTimeout(() => scanLocked = false, 2000);
+    return;
+  }
+
+  const { s: cardSerial, m: scannedMerchantId } = parsed;
+
+  if (scannedMerchantId !== merchant.id) {
+    toast('Card from a different shop', 'error');
+    setTimeout(() => scanLocked = false, 2000);
+    return;
+  }
+
+  try {
+    const { data: customer, error } = await sb
+      .from('customers')
+      .select('*')
+      .eq('card_serial', cardSerial)
+      .eq('merchant_id', merchant.id)
+      .single();
+
+    if (error || !customer) {
+      toast('Customer not found', 'error');
+      setTimeout(() => scanLocked = false, 2000);
+      return;
+    }
+
+    currentCustomer = customer;
+    renderCustomer(customer);
+    toast(`Found: ${customer.name}`, 'success');
+
+    // Vibrate on mobile
+    if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+
+  } catch(e) {
+    toast('Lookup failed. Try again.', 'error');
+    setTimeout(() => scanLocked = false, 2000);
+  }
+}
+
+// ─────────────────────────────────────────────
+// RENDER CUSTOMER
+// ─────────────────────────────────────────────
+function renderCustomer(c) {
+  const card = document.querySelector('#result-card');
+  const idle = document.querySelector('#idle-state');
+  card.style.display = 'block';
+  idle.style.display = 'none';
+
+  // Avatar
+  const initials = c.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  const avatarEl = document.querySelector('#cust-avatar');
+  avatarEl.textContent = initials;
+  avatarEl.style.background = merchant.brand_color + '22';
+  avatarEl.style.color = merchant.brand_color;
+
+  document.querySelector('#cust-name').textContent = c.name;
+
+  const joinDate = new Date(c.created_at).toLocaleDateString('en-US', { month:'short', year:'numeric' });
+  document.querySelector('#cust-meta').textContent = `Member since ${joinDate} · ${c.lifetime_stamps} lifetime stamps`;
+
+  // Stamps
+  const total = merchant.total_stamps;
+  const current = c.stamps;
+  document.querySelector('#cust-stamp-count').textContent = `${current} / ${total}`;
+
+  const grid = document.querySelector('#cust-stamps-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < total; i++) {
+    const dot = document.createElement('div');
+    dot.className = 's-dot' + (i < current ? ' filled' : '');
+    dot.textContent = i < current ? merchant.stamp_emoji : '';
+    grid.appendChild(dot);
+  }
+
+  // Reward banner
+  const banner = document.querySelector('#reward-banner');
+  if (current >= total) {
+    banner.style.display = 'flex';
+    document.querySelector('#btn-redeem').disabled = false;
+    document.querySelector('#btn-add-stamp').disabled = true;
+  } else {
+    banner.style.display = 'none';
+    document.querySelector('#btn-redeem').disabled = true;
+    document.querySelector('#btn-add-stamp').disabled = false;
+  }
+
+  // Card scrolls into view
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  scanLocked = false;
+}
+
+// ─────────────────────────────────────────────
+// ADD STAMP
+// ─────────────────────────────────────────────
+async function doAddStamp() {
+  if (!currentCustomer) return;
+  const btn = document.querySelector('#btn-add-stamp');
+  btn.disabled = true;
+  btn.querySelector('.action-btn-icon').innerHTML = '<div class="spinner" style="width:16px;height:16px"></div>';
+
+  try {
+    const { data, error } = await sb.rpc('add_stamp', {
+      p_customer_id: currentCustomer.id,
+      p_cashier_id:  cashier?.id || null,
+      p_merchant_id: merchant.id
+    });
+
+    if (error) throw error;
+
+    // Animate the new stamp
+    const grid = document.querySelector('#cust-stamps-grid');
+    const dots = grid.querySelectorAll('.s-dot');
+    const newIdx = currentCustomer.stamps;
+    if (dots[newIdx]) {
+      dots[newIdx].classList.add('filled', 'new');
+      dots[newIdx].textContent = merchant.stamp_emoji;
+    }
+
+    currentCustomer.stamps += merchant.points_per_visit;
+    document.querySelector('#cust-stamp-count').textContent = `${currentCustomer.stamps} / ${merchant.total_stamps}`;
+
+    // Session stats
+    sessionStats.scans++;
+    sessionStats.customers.add(currentCustomer.id);
+    updateStats();
+
+    // Scan log
+    addLogItem(currentCustomer.name, 'add', `+${merchant.points_per_visit} stamp`);
+
+    if (data?.reward_ready) {
+      document.querySelector('#reward-banner').style.display = 'flex';
+      document.querySelector('#btn-redeem').disabled = false;
+      btn.disabled = true;
+      toast('🏆 Reward unlocked!', 'success');
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
+    } else {
+      toast(`Stamp added! ${currentCustomer.stamps}/${merchant.total_stamps}`, 'success');
+      btn.disabled = false;
+    }
+
+  } catch(e) {
+    toast('Failed to add stamp', 'error');
+    btn.disabled = false;
+  }
+
+  btn.querySelector('.action-btn-icon').innerHTML = '+';
+}
+
+// ─────────────────────────────────────────────
+// REDEEM REWARD
+// ─────────────────────────────────────────────
+async function doRedeem() {
+  if (!currentCustomer) return;
+  if (!confirm(`Confirm: give "${merchant.reward_label}" to ${currentCustomer.name}?`)) return;
+
+  const btn = document.querySelector('#btn-redeem');
+  btn.disabled = true;
+  btn.querySelector('.action-btn-icon').innerHTML = '<div class="spinner" style="width:16px;height:16px"></div>';
+
+  try {
+    const { error } = await sb.rpc('redeem_reward', {
+      p_customer_id: currentCustomer.id,
+      p_cashier_id:  cashier?.id || null,
+      p_merchant_id: merchant.id
+    });
+
+    if (error) throw error;
+
+    // Reset UI
+    currentCustomer.stamps = 0;
+    const grid = document.querySelector('#cust-stamps-grid');
+    grid.querySelectorAll('.s-dot').forEach(d => {
+      d.classList.remove('filled', 'new');
+      d.textContent = '';
+    });
+
+    document.querySelector('#cust-stamp-count').textContent = `0 / ${merchant.total_stamps}`;
+    document.querySelector('#reward-banner').style.display = 'none';
+    document.querySelector('#btn-add-stamp').disabled = false;
+
+    sessionStats.rewards++;
+    sessionStats.customers.add(currentCustomer.id);
+    updateStats();
+
+    addLogItem(currentCustomer.name, 'redeem', merchant.reward_label);
+
+    toast(`Reward given to ${currentCustomer.name}!`, 'success');
+    if (navigator.vibrate) navigator.vibrate([200]);
+
+  } catch(e) {
+    toast('Redemption failed', 'error');
+    btn.disabled = false;
+  }
+
+  btn.querySelector('.action-btn-icon').innerHTML = '🎁';
+}
+
+// ─────────────────────────────────────────────
+// STATS + LOG
+// ─────────────────────────────────────────────
+async function loadStats() {
+  if (!merchant) return;
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data } = await sb
+    .from('scan_events')
+    .select('action, customer_id')
+    .eq('merchant_id', merchant.id)
+    .gte('created_at', today);
+
+  if (data) {
+    const scans   = data.filter(e => e.action === 'add_stamp').length;
+    const rewards = data.filter(e => e.action === 'redeem_reward').length;
+    const custs   = new Set(data.map(e => e.customer_id)).size;
+    document.querySelector('#stat-scans').textContent    = scans;
+    document.querySelector('#stat-rewards').textContent  = rewards;
+    document.querySelector('#stat-customers').textContent = custs;
+  }
+}
+
+function updateStats() {
+  document.querySelector('#stat-scans').textContent    = sessionStats.scans;
+  document.querySelector('#stat-rewards').textContent  = sessionStats.rewards;
+  document.querySelector('#stat-customers').textContent = sessionStats.customers.size;
+}
+
+function addLogItem(name, type, label) {
+  const log = document.querySelector('#scan-log');
+  const item = document.createElement('div');
+  item.className = 'log-item';
+
+  const now = new Date();
+  const time = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+
+  item.innerHTML = `
+    <div class="log-dot ${type}"></div>
+    <div class="log-customer">${name}</div>
+    <div class="log-action">${label}</div>
+    <div class="log-time">${time}</div>
+  `;
+
+  log.insertBefore(item, log.firstChild);
+
+  // Keep only last 20
+  while (log.children.length > 20) log.removeChild(log.lastChild);
+}
+
+async function loadScanLog() {
+  if (!merchant) return;
+  const { data } = await sb
+    .from('scan_events')
+    .select('*, customers(name)')
+    .eq('merchant_id', merchant.id)
+    .order('created_at', { ascending: false })
+    .limit(15);
+
+  if (data) {
+    data.forEach(e => {
+      const time = new Date(e.created_at).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+      const log = document.querySelector('#scan-log');
+      const item = document.createElement('div');
+      item.className = 'log-item';
+      item.innerHTML = `
+        <div class="log-dot ${e.action === 'add_stamp' ? 'add' : 'redeem'}"></div>
+        <div class="log-customer">${e.customers?.name || 'Unknown'}</div>
+        <div class="log-action">${e.action === 'add_stamp' ? `+${e.stamps_delta} stamp` : 'Reward given'}</div>
+        <div class="log-time">${time}</div>
+      `;
+      log.appendChild(item);
+    });
+  }
+}
+
+// ─────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = 'success') {
+  const el = document.querySelector('#toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ─────────────────────────────────────────────
+// RESTORE SESSION on reload
+// ─────────────────────────────────────────────
+const saved = sessionStorage.getItem('cashier_session');
+if (saved) {
+  try {
+    const { merchant: m, cashier: c } = JSON.parse(saved);
+    merchant = m; cashier = c;
+    document.querySelector('#topbar-shop').textContent  = merchant.name;
+    document.querySelector('#cashier-label').textContent = cashier.name;
+    document.querySelector('#btn-add-sub').textContent  = `+${merchant.points_per_visit} stamp`;
+    document.querySelector('#btn-redeem-sub').textContent = merchant.reward_label;
+    document.querySelector('#reward-banner-label').textContent = merchant.reward_label;
+    showApp();
+  } catch(e) {
+    sessionStorage.removeItem('cashier_session');
+  }
+}
+</script>
+</body>
+</html>
