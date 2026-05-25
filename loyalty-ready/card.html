@@ -425,44 +425,32 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── BULLETPROOF SERIAL DETECTION FOR iOS PWA ──
+
+function getCleanSerial(val) {
+  if (!val) return null;
+  const clean = val.trim().replace(/^#+/, '');
+  return (clean === '' || clean === 'null' || clean === 'undefined') ? null : clean;
+}
+
 const params = new URLSearchParams(window.location.search);
+const hashSerial  = getCleanSerial(window.location.hash);
+const querySerial = getCleanSerial(params.get('id'));
 
-// 1. Try hash first (Safari preserves hash in standalone)
-const hashSerial = window.location.hash.replace('#', '').trim() || null;
+let cardSerial = hashSerial
+  || querySerial
+  || getCleanSerial(localStorage.getItem('my_card_serial'))
+  || getCleanSerial(localStorage.getItem('loyalty_card_serial'))
+  || null;
 
-// 2. Try query param
-const querySerial = params.get('id') || null;
-
-// 3. Try localStorage
-const storedSerial = localStorage.getItem('my_card_serial') || localStorage.getItem('loyalty_card_serial') || null;
-
-// 4. Deep regex scrape against full href as last resort
-function scrapeSerialFromHref() {
-  const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-  const match = window.location.href.match(uuidRegex);
-  return match ? match[0] : null;
-}
-
-const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
-let cardSerial = hashSerial || querySerial || storedSerial || null;
-
-// If standalone and still no serial, do deep scrape
-if (!cardSerial && isStandalone) {
-  cardSerial = scrapeSerialFromHref();
-}
-
-// Persist whatever we found
+// Persist to both keys whenever we have something
 if (cardSerial) {
   localStorage.setItem('my_card_serial', cardSerial);
   localStorage.setItem('loyalty_card_serial', cardSerial);
 }
 
-// If we have querySerial but no hash, safely redirect to hash version
-// so next cold boot from home screen gets it from hash
+// Rewrite URL to hash so Safari preserves it on next home screen cold boot
 if (querySerial && !hashSerial) {
-  const safeUrl = window.location.pathname + '#' + querySerial;
-  history.replaceState(null, '', safeUrl);
+  history.replaceState(null, '', window.location.pathname + '#' + querySerial);
 }
 
 let customer = null;
@@ -470,17 +458,39 @@ let merchant = null;
 let qrGenerated = false;
 
 async function init() {
-  if (!cardSerial) { showNotFound(); return; }
+  // Final regex fallback — catches serials embedded anywhere in href
+  if (!cardSerial) {
+    const m = window.location.href.match(/[?&#]id=([^&#]+)/);
+    if (m && m[1]) cardSerial = getCleanSerial(decodeURIComponent(m[1]));
+  }
+
+  // UUID pattern scrape as absolute last resort
+  if (!cardSerial) {
+    const m = window.location.href.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    if (m) cardSerial = m[0];
+  }
+
+  if (!cardSerial) {
+    showNotFound();
+    return;
+  }
+
+  // Persist whatever we resolved
+  localStorage.setItem('my_card_serial', cardSerial);
+  localStorage.setItem('loyalty_card_serial', cardSerial);
 
   try {
-    // Load customer by card serial
     const { data: c, error: ce } = await sb
       .from('customers')
       .select('*, merchants(*)')
       .eq('card_serial', cardSerial)
       .single();
 
-    if (ce || !c) { showNotFound(); return; }
+    if (ce || !c) {
+      console.error('Supabase error parsing serial:', ce);
+      showNotFound();
+      return;
+    }
 
     customer = c;
     merchant = c.merchants;
@@ -492,10 +502,14 @@ async function init() {
     loadHistory();
     subscribeToUpdates();
 
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('main').style.display = 'flex';
+    // Force display — belt and braces for iOS standalone
+    const loading = document.getElementById('loading');
+    const main    = document.getElementById('main');
+    if (loading) loading.style.display = 'none';
+    if (main)    { main.style.display = 'flex'; main.style.flexDirection = 'column'; main.style.alignItems = 'center'; }
 
   } catch(e) {
+    console.error('Fatal initialization crash:', e);
     showNotFound();
   }
 }
