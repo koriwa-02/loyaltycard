@@ -424,33 +424,29 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// ── BULLETPROOF SERIAL DETECTION FOR iOS PWA ──
+// ── BULLETPROOF SERIAL DETECTION — NO window.location changes ──
 
 function getCleanSerial(val) {
   if (!val) return null;
-  const clean = val.trim().replace(/^#+/, '');
+  const clean = String(val).trim().replace(/^#+/, '');
   return (clean === '' || clean === 'null' || clean === 'undefined') ? null : clean;
 }
 
-const params = new URLSearchParams(window.location.search);
+const params      = new URLSearchParams(window.location.search);
 const hashSerial  = getCleanSerial(window.location.hash);
 const querySerial = getCleanSerial(params.get('id'));
 
+// Priority: hash → query → localStorage (NO window.location.replace)
 let cardSerial = hashSerial
   || querySerial
   || getCleanSerial(localStorage.getItem('my_card_serial'))
   || getCleanSerial(localStorage.getItem('loyalty_card_serial'))
   || null;
 
-// Persist to both keys whenever we have something
+// Lock it into localStorage immediately — no redirects
 if (cardSerial) {
   localStorage.setItem('my_card_serial', cardSerial);
   localStorage.setItem('loyalty_card_serial', cardSerial);
-}
-
-// Rewrite URL to hash so Safari preserves it on next home screen cold boot
-if (querySerial && !hashSerial) {
-  history.replaceState(null, '', window.location.pathname + '#' + querySerial);
 }
 
 let customer = null;
@@ -458,26 +454,22 @@ let merchant = null;
 let qrGenerated = false;
 
 async function init() {
-  // Final regex fallback — catches serials embedded anywhere in href
+  // Secondary sweep — regex against raw href, safe for iOS standalone
   if (!cardSerial) {
-    const m = window.location.href.match(/[?&#]id=([^&#]+)/);
-    if (m && m[1]) cardSerial = getCleanSerial(decodeURIComponent(m[1]));
-  }
-
-  // UUID pattern scrape as absolute last resort
-  if (!cardSerial) {
-    const m = window.location.href.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-    if (m) cardSerial = m[0];
+    const match = window.location.href.match(/[?&]id=([^&#]+)/);
+    if (match && match[1]) {
+      cardSerial = getCleanSerial(decodeURIComponent(match[1]));
+      if (cardSerial) {
+        localStorage.setItem('my_card_serial', cardSerial);
+        localStorage.setItem('loyalty_card_serial', cardSerial);
+      }
+    }
   }
 
   if (!cardSerial) {
     showNotFound();
     return;
   }
-
-  // Persist whatever we resolved
-  localStorage.setItem('my_card_serial', cardSerial);
-  localStorage.setItem('loyalty_card_serial', cardSerial);
 
   try {
     const { data: c, error: ce } = await sb
@@ -487,7 +479,7 @@ async function init() {
       .single();
 
     if (ce || !c) {
-      console.error('Supabase error parsing serial:', ce);
+      console.error('Supabase data error:', ce);
       showNotFound();
       return;
     }
@@ -502,14 +494,11 @@ async function init() {
     loadHistory();
     subscribeToUpdates();
 
-    // Force display — belt and braces for iOS standalone
-    const loading = document.getElementById('loading');
-    const main    = document.getElementById('main');
-    if (loading) loading.style.display = 'none';
-    if (main)    { main.style.display = 'flex'; main.style.flexDirection = 'column'; main.style.alignItems = 'center'; }
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main').style.display = 'flex';
 
   } catch(e) {
-    console.error('Fatal initialization crash:', e);
+    console.error('Fatal load crash:', e);
     showNotFound();
   }
 }
