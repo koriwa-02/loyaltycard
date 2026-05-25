@@ -748,7 +748,7 @@ async function doLogin() {
       .eq('active', true)
       .single();
 
-    if (me || !m) throw new Error('Shop not found');
+    if (me || !m) throw new Error('DB error: ' + (me?.message || 'null data') + ' slug=' + slug);
     merchant = m;
 
     // Verify PIN against cashiers table
