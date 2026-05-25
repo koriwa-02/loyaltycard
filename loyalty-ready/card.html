@@ -424,18 +424,46 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+// ── BULLETPROOF SERIAL DETECTION FOR iOS PWA ──
 const params = new URLSearchParams(window.location.search);
 
-// Read from URL params
+// 1. Try hash first (Safari preserves hash in standalone)
+const hashSerial = window.location.hash.replace('#', '').trim() || null;
+
+// 2. Try query param
 const querySerial = params.get('id') || null;
-const queryMerchant = params.get('merchant') || null;
 
-// Persist to localStorage whenever present in URL
-if (querySerial)   localStorage.setItem('loyalty_card_serial', querySerial);
-if (queryMerchant) localStorage.setItem('loyalty_merchant', queryMerchant);
+// 3. Try localStorage
+const storedSerial = localStorage.getItem('my_card_serial') || localStorage.getItem('loyalty_card_serial') || null;
 
-// Fallback to localStorage when launched from home screen (no URL params)
-let cardSerial = querySerial || localStorage.getItem('loyalty_card_serial') || null;
+// 4. Deep regex scrape against full href as last resort
+function scrapeSerialFromHref() {
+  const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  const match = window.location.href.match(uuidRegex);
+  return match ? match[0] : null;
+}
+
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+let cardSerial = hashSerial || querySerial || storedSerial || null;
+
+// If standalone and still no serial, do deep scrape
+if (!cardSerial && isStandalone) {
+  cardSerial = scrapeSerialFromHref();
+}
+
+// Persist whatever we found
+if (cardSerial) {
+  localStorage.setItem('my_card_serial', cardSerial);
+  localStorage.setItem('loyalty_card_serial', cardSerial);
+}
+
+// If we have querySerial but no hash, safely redirect to hash version
+// so next cold boot from home screen gets it from hash
+if (querySerial && !hashSerial) {
+  const safeUrl = window.location.pathname + '#' + querySerial;
+  history.replaceState(null, '', safeUrl);
+}
 
 let customer = null;
 let merchant = null;
