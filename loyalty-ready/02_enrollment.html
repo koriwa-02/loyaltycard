@@ -815,6 +815,10 @@ function showError(msg) {
 // SUCCESS / CARD VIEW
 // ─────────────────────────────────────────────
 function showSuccess() {
+  // Redirect to live card page
+  const cardUrl = window.location.href.replace('02_enrollment.html', 'card.html') + '?id=' + newCustomer.card_serial;
+  window.location.href = cardUrl;
+  return;
   document.querySelector('#enroll-view').style.display = 'none';
   const sv = document.querySelector('#success-view');
   sv.style.display = 'flex';
