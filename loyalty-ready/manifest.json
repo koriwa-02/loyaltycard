@@ -1,0 +1,22 @@
+{
+  "name": "My Loyalty Card",
+  "short_name": "My Card",
+  "description": "Your digital loyalty card — check stamps anytime",
+  "start_url": "/loyaltycard/loyalty-ready/card.html",
+  "display": "standalone",
+  "background_color": "#F4F3F0",
+  "theme_color": "#1D9E75",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Coffee_cup_icon.svg/192px-Coffee_cup_icon.svg.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Coffee_cup_icon.svg/512px-Coffee_cup_icon.svg.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
