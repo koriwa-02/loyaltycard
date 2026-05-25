@@ -9,14 +9,16 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Coffee_cup_icon.svg/192px-Coffee_cup_icon.svg.png",
+      "src": "./logo.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Coffee_cup_icon.svg/512px-Coffee_cup_icon.svg.png",
+      "src": "./logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
