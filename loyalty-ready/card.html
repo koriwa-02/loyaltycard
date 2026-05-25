@@ -73,6 +73,9 @@
     overflow: hidden;
     min-height: 200px;
     color: #fff;
+    flex-shrink: 0;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
   }
 
   .loyalty-card::before {
@@ -327,7 +330,7 @@
   <span>Loading your card...</span>
 </div>
 
-<div id="main" style="display:none;width:100%;display:none;flex-direction:column;align-items:center;">
+<div id="main" style="display:none;width:100%;flex-direction:column;align-items:center;">
 
   <!-- LOYALTY CARD -->
   <div class="loyalty-card" id="loyalty-card">
@@ -562,8 +565,8 @@ function subscribeToUpdates() {
       loadHistory();
       // Flash the card
       const card = document.getElementById('loyalty-card');
-      card.style.transform = 'scale(1.02)';
-      setTimeout(() => card.style.transform = 'scale(1)', 300);
+      card.style.transform = 'scale(1.02) translateZ(0)';
+      setTimeout(() => card.style.transform = 'scale(1) translateZ(0)', 300);
     })
     .subscribe();
 }
