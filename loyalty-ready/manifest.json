@@ -1,8 +1,8 @@
 {
   "name": "My Loyalty Card",
   "short_name": "My Card",
-  "description": "Your digital loyalty card — check stamps anytime",
-  "start_url": "/loyaltycard/loyalty-ready/card.html",
+  "description": "Your digital loyalty card \u2014 check stamps anytime",
+  "start_url": "./card.html",
   "display": "standalone",
   "background_color": "#F4F3F0",
   "theme_color": "#1D9E75",
