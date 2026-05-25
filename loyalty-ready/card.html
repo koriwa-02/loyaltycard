@@ -416,7 +416,17 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 const params = new URLSearchParams(window.location.search);
-const cardSerial = params.get('id');
+let cardSerial = params.get('id');
+
+// If opened from home screen (no ?id= in URL), load from localStorage
+if (!cardSerial) {
+  cardSerial = localStorage.getItem('my_card_serial');
+}
+
+// Save serial to localStorage whenever it's in the URL
+if (params.get('id')) {
+  localStorage.setItem('my_card_serial', params.get('id'));
+}
 
 let customer = null;
 let merchant = null;
