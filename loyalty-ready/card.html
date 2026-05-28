@@ -20,6 +20,8 @@
 <style>
   :root {
     --brand: #1D9E75;
+    --brand-dark: #0F6E56;
+    --brand-light: #E1F5EE;
     --ink: #0E0E0E;
     --ink-muted: #6B6B6B;
     --surface: #F4F3F0;
@@ -28,9 +30,7 @@
     --font-display: 'Syne', sans-serif;
     --font-body: 'DM Sans', sans-serif;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   body {
     font-family: var(--font-body);
     background: var(--surface);
@@ -42,313 +42,7 @@
     color: var(--ink);
   }
 
-  /* ── LOADING ── */
-  .loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100dvh;
-    gap: 16px;
-    color: var(--ink-muted);
-    font-size: 14px;
-  }
-
-  .ring {
-    width: 36px; height: 36px;
-    border: 3px solid rgba(0,0,0,0.08);
-    border-top-color: var(--brand);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ── CARD ── */
-  .loyalty-card {
-    width: calc(100% - 32px);
-    max-width: 400px;
-    margin-top: 32px;
-    border-radius: 24px;
-    padding: 24px;
-    position: relative;
-    overflow: hidden;
-    min-height: 200px;
-    color: #fff;
-    flex-shrink: 0;
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-  }
-
-  .loyalty-card::before {
-    content: '';
-    position: absolute;
-    top: -60px; right: -60px;
-    width: 220px; height: 220px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.07);
-    pointer-events: none;
-  }
-
-  .loyalty-card::after {
-    content: '';
-    position: absolute;
-    bottom: -80px; left: -40px;
-    width: 260px; height: 260px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.05);
-    pointer-events: none;
-  }
-
-  .card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
-    position: relative;
-    z-index: 1;
-  }
-
-  .card-shop {
-    font-family: var(--font-display);
-    font-size: 14px;
-    font-weight: 600;
-    opacity: 0.85;
-  }
-
-  .card-emoji { font-size: 28px; }
-
-  .card-name {
-    font-family: var(--font-display);
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    margin-bottom: 20px;
-    position: relative;
-    z-index: 1;
-    line-height: 1.1;
-  }
-
-  /* ── STAMPS ── */
-  .stamps-wrap {
-    position: relative;
-    z-index: 1;
-    margin-bottom: 20px;
-  }
-
-  .stamps-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-  }
-
-  .stamp {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.35);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 15px;
-    transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
-  }
-
-  .stamp.filled {
-    background: rgba(255,255,255,0.22);
-    border-color: rgba(255,255,255,0.8);
-  }
-
-  .card-bottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    position: relative;
-    z-index: 1;
-  }
-
-  .reward-label { font-size: 11px; opacity: 0.7; margin-bottom: 2px; font-weight: 300; }
-  .reward-value { font-size: 14px; font-weight: 600; }
-  .stamp-count  { font-size: 13px; opacity: 0.7; font-weight: 300; }
-
-  /* ── REWARD BANNER ── */
-  .reward-banner {
-    display: none;
-    width: calc(100% - 32px);
-    max-width: 400px;
-    margin-top: 12px;
-    padding: 14px 18px;
-    background: #FFF8E7;
-    border: 1.5px solid #FFD166;
-    border-radius: 16px;
-    gap: 12px;
-    align-items: center;
-  }
-
-  .reward-banner-icon { font-size: 28px; }
-  .reward-banner-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: #92600A; }
-  .reward-banner-sub { font-size: 12px; color: #B07A20; margin-top: 2px; font-weight: 300; }
-
-  /* ── QR SECTION ── */
-  .qr-card {
-    background: var(--card-bg);
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    padding: 24px;
-    width: calc(100% - 32px);
-    max-width: 400px;
-    margin-top: 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .qr-label {
-    font-size: 13px;
-    color: var(--ink-muted);
-    text-align: center;
-    font-weight: 300;
-    line-height: 1.5;
-  }
-
-  .qr-label strong { color: var(--ink); font-weight: 500; }
-
-  #qr-box canvas, #qr-box img { border-radius: 8px; }
-
-  .serial-text {
-    font-family: monospace;
-    font-size: 11px;
-    color: var(--ink-muted);
-    background: var(--surface);
-    padding: 6px 12px;
-    border-radius: 8px;
-    letter-spacing: 0.05em;
-  }
-
-  /* ── HISTORY ── */
-  .history-card {
-    background: var(--card-bg);
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    padding: 20px 20px 8px;
-    width: calc(100% - 32px);
-    max-width: 400px;
-    margin-top: 16px;
-  }
-
-  .history-title {
-    font-family: var(--font-display);
-    font-size: 15px;
-    font-weight: 700;
-    margin-bottom: 14px;
-    color: var(--ink);
-  }
-
-  .history-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 0;
-    border-bottom: 0.5px solid var(--border);
-  }
-
-  .history-item:last-child { border: none; }
-
-  .h-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .h-dot.add    { background: #1D9E75; }
-  .h-dot.redeem { background: #F4A100; }
-
-  .h-label { font-size: 13px; font-weight: 500; flex: 1; color: var(--ink); }
-  .h-date  { font-size: 11px; color: var(--ink-muted); }
-
-  /* ── SHARE ── */
-  .share-btn {
-    width: calc(100% - 32px);
-    max-width: 400px;
-    margin-top: 16px;
-    padding: 15px;
-    border-radius: 14px;
-    border: 1.5px dashed rgba(0,0,0,0.15);
-    background: transparent;
-    font-family: var(--font-display);
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--ink-muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: border-color 0.15s, color 0.15s;
-  }
-
-  .share-btn:hover { border-color: var(--brand); color: var(--brand); }
-
-  /* ── NOT FOUND ── */
-  .not-found {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100dvh;
-    gap: 12px;
-    text-align: center;
-    padding: 32px;
-  }
-
-  .not-found-icon { font-size: 48px; }
-  .not-found-title { font-family: var(--font-display); font-size: 22px; font-weight: 800; }
-  .not-found-sub { font-size: 14px; color: var(--ink-muted); font-weight: 300; }
-  .install-banner {
-    display: none;
-    width: calc(100% - 32px);
-    max-width: 400px;
-    margin-top: 16px;
-    padding: 14px 18px;
-    background: #0E0E0E;
-    border-radius: 16px;
-    gap: 12px;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .install-banner-left { display: flex; align-items: center; gap: 12px; }
-  .install-banner-icon { font-size: 24px; }
-  .install-banner-text { flex: 1; }
-  .install-banner-title { font-size: 13px; font-weight: 500; color: #fff; }
-  .install-banner-sub { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; font-weight: 300; }
-  .install-banner-btn { padding: 8px 16px; border-radius: 20px; border: none; background: var(--brand); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-  .ios-hint { display: none; width: calc(100% - 32px); max-width: 400px; margin-top: 12px; padding: 12px 16px; background: #0E0E0E; border-radius: 14px; font-size: 12px; color: rgba(255,255,255,0.7); text-align: center; line-height: 1.6; }
-  .offline-banner {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    background: #F59E0B;
-    color: #fff;
-    text-align: center;
-    padding: 10px 16px;
-    font-size: 13px;
-    font-weight: 500;
-    z-index: 999;
-    font-family: var(--font-body);
-  }
-  .offline-banner.show { display: block; }
-  .stale-badge {
-    display: none;
-    font-size: 11px;
-    background: #FEF3C7;
-    color: #92400E;
-    padding: 4px 12px;
-    border-radius: 20px;
-    text-align: center;
-    margin: 0 16px;
-    font-weight: 500;
-  }
-  .stale-badge.show { display: block; }
+  /* OFFLINE BANNER */
   .offline-banner {
     display: none;
     position: fixed;
@@ -366,62 +60,250 @@
     gap: 8px;
   }
   .offline-banner.show { display: flex; }
-  .offline-dot { width: 8px; height: 8px; border-radius: 50%; background: #EF4444; flex-shrink: 0; }
-  .online-dot  { background: #1D9E75; }
-  .stale-badge {
-    display: none;
-    font-size: 11px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    background: rgba(239,68,68,0.1);
-    color: #EF4444;
-    border: 1px solid rgba(239,68,68,0.2);
-    margin: 0 auto;
-    width: fit-content;
+  .conn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .conn-dot.red   { background: #EF4444; }
+  .conn-dot.green { background: #1D9E75; }
+
+  /* LOADING */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    gap: 16px;
+    color: var(--ink-muted);
+    font-size: 14px;
+    font-weight: 300;
   }
+  .ring {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(0,0,0,0.08);
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* LOYALTY CARD */
+  .loyalty-card {
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 32px;
+    border-radius: 24px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    min-height: 200px;
+    color: #fff;
+    flex-shrink: 0;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+  .loyalty-card::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+    pointer-events: none;
+  }
+  .loyalty-card::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; left: -40px;
+    width: 260px; height: 260px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+    pointer-events: none;
+  }
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  }
+  .card-shop { font-family: var(--font-display); font-size: 14px; font-weight: 600; opacity: 0.85; margin-bottom: 4px; }
+  .card-name { font-size: 22px; font-family: var(--font-display); font-weight: 800; margin-bottom: 16px; position: relative; z-index: 1; letter-spacing: -0.02em; }
+  .card-emoji { font-size: 28px; }
+  .stamps-wrap { position: relative; z-index: 1; margin-bottom: 20px; }
+  .stamps-grid { display: flex; flex-wrap: wrap; gap: 7px; }
+  .stamp {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+  }
+  .stamp.filled { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.8); }
+  .card-bottom { display: flex; justify-content: space-between; align-items: flex-end; position: relative; z-index: 1; }
+  .reward-label { font-size: 11px; opacity: 0.7; margin-bottom: 2px; font-weight: 300; }
+  .reward-value { font-size: 14px; font-weight: 600; }
+  .stamp-count  { font-size: 13px; opacity: 0.7; }
+
+  /* REWARD BANNER */
+  .reward-banner {
+    display: none;
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 12px;
+    padding: 14px 18px;
+    background: #FFF8E7;
+    border: 1.5px solid #FFD166;
+    border-radius: 16px;
+    gap: 12px;
+    align-items: center;
+  }
+  .reward-banner-icon { font-size: 28px; }
+  .reward-banner-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: #92600A; }
+  .reward-banner-sub { font-size: 12px; color: #B07A20; margin-top: 2px; font-weight: 300; }
+
+  /* QR SECTION */
+  .qr-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    padding: 24px;
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .qr-label { font-size: 13px; color: var(--ink-muted); text-align: center; font-weight: 300; line-height: 1.5; }
+  .qr-label strong { color: var(--ink); font-weight: 500; }
+  #qr-box canvas, #qr-box img { border-radius: 8px; }
+  .serial-text { font-family: monospace; font-size: 11px; color: var(--ink-muted); background: var(--surface); padding: 6px 12px; border-radius: 8px; letter-spacing: 0.05em; }
+
+  /* HISTORY */
+  .history-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    padding: 20px 20px 8px;
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 16px;
+  }
+  .history-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+  .history-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+  .history-item:last-child { border: none; }
+  .h-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .h-dot.add    { background: #1D9E75; }
+  .h-dot.redeem { background: #F4A100; }
+  .h-label { font-size: 13px; font-weight: 500; flex: 1; color: var(--ink); }
+  .h-date  { font-size: 11px; color: var(--ink-muted); }
+
+  /* BUTTONS */
+  .wa-btn {
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 14px;
+    background: #25D366;
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    border: none;
+  }
+  .share-btn {
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 12px;
+    padding: 15px;
+    border-radius: 14px;
+    border: 1.5px dashed rgba(0,0,0,0.15);
+    background: transparent;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink-muted);
+    cursor: pointer;
+  }
+
+  /* INSTALL HINT */
+  .ios-hint {
+    display: none;
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: #0E0E0E;
+    border-radius: 14px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* NOT FOUND */
+  .not-found {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    gap: 12px;
+    text-align: center;
+    padding: 32px;
+  }
+  .not-found-icon  { font-size: 48px; }
+  .not-found-title { font-family: var(--font-display); font-size: 22px; font-weight: 800; }
+  .not-found-sub   { font-size: 14px; color: var(--ink-muted); font-weight: 300; }
 </style>
 </head>
 <body>
 
-<div class="offline-banner" id="offline-banner">
-  ⚡ You're offline — showing your last saved card. Stamps will sync when you reconnect.
-</div>
-
 <!-- Offline banner -->
 <div class="offline-banner" id="offline-banner">
-  <div class="offline-dot" id="offline-dot"></div>
+  <div class="conn-dot red" id="conn-dot"></div>
   <span id="offline-text">You're offline — showing cached card</span>
 </div>
 
+<!-- Loading -->
 <div class="loading" id="loading">
   <div class="ring"></div>
-  <span id="loading-text">Loading your card...</span>
+  <span>Loading your card...</span>
 </div>
 
-<div id="main" style="display:none;width:100%;flex-direction:column;align-items:center;visibility:hidden;">
+<!-- Main card view -->
+<div id="main" style="display:none;width:100%;flex-direction:column;align-items:center;">
 
-  <!-- LOYALTY CARD -->
-  <div class="loyalty-card" id="loyalty-card">
+  <div class="loyalty-card" id="loyalty-card" style="background:#1D9E75">
     <div class="card-top">
-      <div class="card-shop" id="c-shop">Café Atlas</div>
+      <div>
+        <div class="card-shop" id="c-shop">Loading...</div>
+      </div>
       <div class="card-emoji" id="c-emoji">☕</div>
     </div>
-    <div class="card-name" id="c-name">Ahmed Benali</div>
+    <div class="card-name" id="c-name">Your Name</div>
     <div class="stamps-wrap">
       <div class="stamps-grid" id="c-stamps"></div>
     </div>
     <div class="card-bottom">
       <div>
         <div class="reward-label">Reward</div>
-        <div class="reward-value" id="c-reward">1 free coffee</div>
+        <div class="reward-value" id="c-reward">Free coffee</div>
       </div>
       <div class="stamp-count" id="c-count">0 / 10</div>
-        </div>
-        <div class="stale-badge" id="stale-badge">⚡ Offline — syncs when connected</div>
     </div>
   </div>
 
-  <!-- REWARD READY -->
   <div class="reward-banner" id="reward-banner">
     <div class="reward-banner-icon">🏆</div>
     <div>
@@ -430,16 +312,13 @@
     </div>
   </div>
 
-  <!-- QR CODE -->
   <div class="qr-card">
     <div class="qr-label">Show this QR to the cashier<br><strong>at every visit</strong></div>
     <div id="qr-box"></div>
     <div class="serial-text" id="serial-text"></div>
-    <div class="qr-label" style="font-size:11px">Updated live — no refresh needed</div>
-    <div class="stale-badge" id="stale-badge">Cached data — reconnect to update</div>
+    <div class="qr-label" style="font-size:11px">Updates live — no refresh needed</div>
   </div>
 
-  <!-- SCAN HISTORY -->
   <div class="history-card" id="history-card">
     <div class="history-title">Visit history</div>
     <div id="history-list">
@@ -447,42 +326,20 @@
     </div>
   </div>
 
-  <!-- SHARE REFERRAL -->
-  <!-- Google Wallet Button -->
-  <button onclick="addToGoogleWallet()" id="gwallet-btn" style="width:calc(100% - 32px);max-width:400px;margin-top:16px;padding:15px;border-radius:14px;border:none;background:#000;color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background 0.15s;">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-    Add to Google Wallet
-  </button>
-
-  <!-- Install banner (Android) -->
-  <div class="install-banner" id="install-banner">
-    <div class="install-banner-left">
-      <div class="install-banner-icon">📲</div>
-      <div class="install-banner-text">
-        <div class="install-banner-title">Add to home screen</div>
-        <div class="install-banner-sub">Access your card like an app</div>
-      </div>
-    </div>
-    <button class="install-banner-btn" id="install-btn">Add</button>
-  </div>
-
-  <!-- iOS hint -->
-  <div class="ios-hint" id="ios-hint">
-    Tap <strong style="color:#fff">Share</strong> then <strong style="color:#fff">"Add to Home Screen"</strong> to save your card as an app
-  </div>
-
-  <!-- WhatsApp save button -->
-  <a id="wa-save-btn" href="#" onclick="sendWhatsApp(event)" style="width:calc(100% - 32px);max-width:400px;margin-top:16px;padding:16px;border-radius:14px;background:#25D366;color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:10px;">
+  <button class="wa-btn" onclick="sendWhatsApp()">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.554 4.118 1.528 5.855L0 24l6.335-1.508A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.887 9.887 0 01-5.031-1.378l-.361-.214-3.741.981.999-3.648-.235-.374A9.861 9.861 0 012.106 12C2.106 6.58 6.58 2.106 12 2.106c5.421 0 9.894 4.474 9.894 9.894 0 5.421-4.473 9.894-9.894 9.894z"/></svg>
     Save my card on WhatsApp
-  </a>
-
-  <button class="share-btn" id="share-btn" onclick="shareReferral()">
-    🎁 Invite a friend — earn bonus stamps
   </button>
+
+  <button class="share-btn" onclick="shareReferral()">🎁 Invite a friend — earn bonus stamps</button>
+
+  <div class="ios-hint" id="ios-hint">
+    Tap <strong style="color:#fff">Share</strong> then <strong style="color:#fff">"Add to Home Screen"</strong> to save your card
+  </div>
 
 </div>
 
+<!-- Not found -->
 <div class="not-found" id="not-found" style="display:none">
   <div class="not-found-icon">🔍</div>
   <div class="not-found-title">Card not found</div>
@@ -492,11 +349,13 @@
 <script>
 const SUPABASE_URL  = 'https://lvzzcwsttvbaqsnuwdze.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME';
-
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// ── BULLETPROOF SERIAL DETECTION — NO window.location changes ──
+let customer = null;
+let merchant = null;
+let qrGenerated = false;
 
+// ── SERIAL DETECTION ──
 function getCleanSerial(val) {
   if (!val) return null;
   const clean = String(val).trim().replace(/^#+/, '');
@@ -507,25 +366,34 @@ const params      = new URLSearchParams(window.location.search);
 const hashSerial  = getCleanSerial(window.location.hash);
 const querySerial = getCleanSerial(params.get('id'));
 
-// Priority: hash → query → localStorage (NO window.location.replace)
 let cardSerial = hashSerial
   || querySerial
   || getCleanSerial(localStorage.getItem('my_card_serial'))
   || getCleanSerial(localStorage.getItem('loyalty_card_serial'))
   || null;
 
-// Lock it into localStorage immediately — no redirects
 if (cardSerial) {
   localStorage.setItem('my_card_serial', cardSerial);
   localStorage.setItem('loyalty_card_serial', cardSerial);
 }
 
-let customer = null;
-let merchant = null;
-let qrGenerated = false;
+// ── SHOW / HIDE ──
+function showMain() {
+  document.getElementById('loading').style.display = 'none';
+  const main = document.getElementById('main');
+  main.style.display = 'flex';
+  main.style.flexDirection = 'column';
+  main.style.alignItems = 'center';
+}
 
+function showNotFound() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('not-found').style.display = 'flex';
+}
+
+// ── INIT ──
 async function init() {
-  // Secondary sweep — regex against raw href, safe for iOS standalone
+  // Regex sweep as fallback
   if (!cardSerial) {
     const match = window.location.href.match(/[?&]id=([^&#]+)/);
     if (match && match[1]) {
@@ -537,54 +405,42 @@ async function init() {
     }
   }
 
-  if (!cardSerial) {
-    showNotFound();
-    return;
-  }
+  if (!cardSerial) { showNotFound(); return; }
 
-  // If offline — load from cache immediately, don't even try Supabase
+  // Offline — load from cache immediately
   if (!navigator.onLine) {
     const cached = localStorage.getItem('cached_customer_' + cardSerial);
     if (cached) {
       try {
-        const parsed = JSON.parse(cached);
-        customer = parsed.customer;
-        merchant = parsed.merchant;
-        document.title = customer.name + ' — ' + merchant.name + ' Loyalty Card';
-        document.documentElement.style.setProperty('--brand', merchant.brand_color);
+        const p = JSON.parse(cached);
+        customer = p.customer; merchant = p.merchant;
+        applyBrand();
         renderCard();
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('main').style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;visibility:visible;';
-        updateOnlineStatus();
+        showMain();
+        updateOfflineBanner();
         return;
-      } catch(e) { console.error('Offline cache error:', e); }
+      } catch(e) {}
     }
   }
 
+  // Online — fetch from Supabase
   try {
-    const { data: c, error: ce } = await sb
+    const { data: c, error } = await sb
       .from('customers')
       .select('*, merchants(*)')
       .eq('card_serial', cardSerial)
       .single();
 
-    if (ce || !c) {
-      // If offline, try to show cached data from localStorage
-      if (!navigator.onLine) {
-        const cached = localStorage.getItem('cached_customer_' + cardSerial);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          customer = parsed.customer;
-          merchant = parsed.merchant;
-          document.title = customer.name + ' — ' + merchant.name + ' Loyalty Card';
-          document.documentElement.style.setProperty('--brand', merchant.brand_color);
-          renderCard();
-          document.getElementById('loading').style.display = 'none';
-          document.getElementById('main').style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;visibility:visible;';
-          return;
-        }
+    if (error || !c) {
+      // Try cache as fallback
+      const cached = localStorage.getItem('cached_customer_' + cardSerial);
+      if (cached) {
+        try {
+          const p = JSON.parse(cached);
+          customer = p.customer; merchant = p.merchant;
+          applyBrand(); renderCard(); showMain(); return;
+        } catch(e) {}
       }
-      console.error('Supabase data error:', ce);
       showNotFound();
       return;
     }
@@ -592,42 +448,37 @@ async function init() {
     customer = c;
     merchant = c.merchants;
 
-    document.title = `${c.name} — ${merchant.name} Loyalty Card`;
-    document.documentElement.style.setProperty('--brand', merchant.brand_color);
+    // Save to cache for offline
+    localStorage.setItem('cached_customer_' + cardSerial, JSON.stringify({
+      customer: c, merchant: c.merchants
+    }));
 
-    // Cache customer + merchant data for offline use
-    localStorage.setItem('cached_customer_' + cardSerial, JSON.stringify({ customer: c, merchant: merchant }));
-
-    clearTimeout(loadTimeout);
+    applyBrand();
     renderCard();
     loadHistory();
     subscribeToUpdates();
-
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('main').style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;visibility:visible;';
+    showMain();
 
   } catch(e) {
-    console.error('Fatal load crash:', e);
-    // Network threw — try localStorage cache before giving up
+    // Network error — try cache
     const cached = localStorage.getItem('cached_customer_' + cardSerial);
     if (cached) {
       try {
-        const parsed = JSON.parse(cached);
-        customer = parsed.customer;
-        merchant = parsed.merchant;
-        document.title = customer.name + ' — ' + merchant.name + ' Loyalty Card';
-        document.documentElement.style.setProperty('--brand', merchant.brand_color);
-        renderCard();
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('main').style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;visibility:visible;';
-        updateOnlineStatus();
-        return;
-      } catch(e2) { console.error('Cache parse failed:', e2); }
+        const p = JSON.parse(cached);
+        customer = p.customer; merchant = p.merchant;
+        applyBrand(); renderCard(); showMain(); updateOfflineBanner(); return;
+      } catch(e2) {}
     }
     showNotFound();
   }
 }
 
+function applyBrand() {
+  document.title = `${customer.name} — ${merchant.name} Loyalty Card`;
+  document.documentElement.style.setProperty('--brand', merchant.brand_color);
+}
+
+// ── RENDER CARD ──
 function renderCard() {
   const c = customer;
   const m = merchant;
@@ -658,19 +509,17 @@ function renderCard() {
     banner.style.display = 'none';
   }
 
-  // QR code — generate once, with delay for first-time visitors
+  // QR code — generate once
   if (!qrGenerated) {
     qrGenerated = true;
-    const qrData = JSON.stringify({ s: c.card_serial, m: m.id });
-    const generateQR = () => {
+    setTimeout(() => {
       const qrBox = document.getElementById('qr-box');
       if (!qrBox) return;
-      qrBox.innerHTML = ''; // clear any partial render
+      qrBox.innerHTML = '';
       try {
         new QRCode(qrBox, {
-          text: qrData,
-          width: 200,
-          height: 200,
+          text: JSON.stringify({ s: c.card_serial, m: m.id }),
+          width: 200, height: 200,
           colorDark: '#0E0E0E',
           colorLight: '#FFFFFF',
           correctLevel: QRCode.CorrectLevel.H
@@ -678,15 +527,21 @@ function renderCard() {
         const serialEl = document.getElementById('serial-text');
         if (serialEl) serialEl.textContent = c.card_serial.slice(0, 20) + '...';
       } catch(e) {
-        // Retry once more after another 500ms
-        setTimeout(generateQR, 500);
+        setTimeout(() => {
+          qrBox.innerHTML = '';
+          new QRCode(qrBox, {
+            text: JSON.stringify({ s: c.card_serial, m: m.id }),
+            width: 200, height: 200,
+            colorDark: '#0E0E0E', colorLight: '#FFFFFF',
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        }, 600);
       }
-    };
-    // Small delay ensures DOM is fully painted before QR renders
-    setTimeout(generateQR, 300);
+    }, 200);
   }
 }
 
+// ── HISTORY ──
 async function loadHistory() {
   const { data } = await sb
     .from('scan_events')
@@ -700,34 +555,32 @@ async function loadHistory() {
 
   list.innerHTML = '';
   data.forEach(e => {
-    const date = new Date(e.created_at).toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
+    const date = new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     const isAdd = e.action === 'add_stamp';
     const item = document.createElement('div');
     item.className = 'history-item';
     item.innerHTML = `
       <div class="h-dot ${isAdd ? 'add' : 'redeem'}"></div>
       <div class="h-label">${isAdd ? `+${e.stamps_delta} stamp` : '🎁 Reward redeemed'}</div>
-      <div class="h-date">${date}</div>
-    `;
+      <div class="h-date">${date}</div>`;
     list.appendChild(item);
   });
 }
 
-// Live updates — card refreshes automatically when cashier adds stamp
+// ── REALTIME ──
 function subscribeToUpdates() {
   sb.channel('customer-' + customer.id)
     .on('postgres_changes', {
-      event: 'UPDATE',
-      schema: 'public',
-      table: 'customers',
+      event: 'UPDATE', schema: 'public', table: 'customers',
       filter: `id=eq.${customer.id}`
     }, payload => {
       customer = { ...customer, ...payload.new };
+      // Update cache
+      localStorage.setItem('cached_customer_' + cardSerial, JSON.stringify({
+        customer: customer, merchant: merchant
+      }));
       renderCard();
       loadHistory();
-      // Flash the card
       const card = document.getElementById('loyalty-card');
       card.style.transform = 'scale(1.02) translateZ(0)';
       setTimeout(() => card.style.transform = 'scale(1) translateZ(0)', 300);
@@ -735,42 +588,46 @@ function subscribeToUpdates() {
     .subscribe();
 }
 
-function sendWhatsApp(e) {
-  e.preventDefault();
+// ── OFFLINE BANNER ──
+function updateOfflineBanner() {
+  const banner = document.getElementById('offline-banner');
+  const dot    = document.getElementById('conn-dot');
+  const text   = document.getElementById('offline-text');
+
+  if (!navigator.onLine) {
+    dot.className = 'conn-dot red';
+    text.textContent = "You're offline — showing your last saved card";
+    banner.classList.add('show');
+  } else {
+    dot.className = 'conn-dot green';
+    text.textContent = 'Back online — syncing...';
+    banner.classList.add('show');
+    setTimeout(() => banner.classList.remove('show'), 2500);
+    if (customer) {
+      sb.from('customers').select('*, merchants(*)').eq('card_serial', cardSerial).single()
+        .then(({ data: c }) => {
+          if (c) {
+            customer = c; merchant = c.merchants;
+            localStorage.setItem('cached_customer_' + cardSerial, JSON.stringify({ customer: c, merchant: c.merchants }));
+            renderCard();
+          }
+        });
+    }
+  }
+}
+
+window.addEventListener('online',  updateOfflineBanner);
+window.addEventListener('offline', updateOfflineBanner);
+
+// ── SHARE ──
+function sendWhatsApp() {
   const cardUrl = window.location.href;
   const msg = encodeURIComponent('🎉 My loyalty card for ' + (merchant ? merchant.name : 'the shop') + ':\n\n' + cardUrl + '\n\nTap the link to check my stamps!');
   window.open('https://wa.me/?text=' + msg, '_blank');
 }
 
-async function addToGoogleWallet() {
-  const btn = document.getElementById('gwallet-btn');
-  btn.textContent = 'Generating pass...';
-  btn.disabled = true;
-
-  try {
-    const res = await fetch('https://lvzzcwsttvbaqsnuwdze.supabase.co/functions/v1/google-wallet-pass', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME'
-      },
-      body: JSON.stringify({ customer_id: customer.id })
-    });
-
-    const data = await res.json();
-    if (!data.saveUrl) throw new Error(data.error || 'Failed to generate pass');
-
-    window.location.href = data.saveUrl;
-
-  } catch(e) {
-    alert('Error: ' + e.message);
-    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Add to Google Wallet';
-    btn.disabled = false;
-  }
-}
-
 function shareReferral() {
-  const base = window.location.origin + window.location.pathname.replace('card.html', '02_enrollment.html');
+  const base = window.location.href.split('card.html')[0] + '02_enrollment.html';
   const link = `${base}?merchant=${merchant.slug}&ref=${customer.referral_code}`;
   if (navigator.share) {
     navigator.share({ title: `Join ${merchant.name}`, text: 'Get a loyalty card and earn rewards!', url: link });
@@ -779,162 +636,20 @@ function shareReferral() {
   }
 }
 
-function showNotFound() {
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('not-found').style.display = 'flex';
-}
-
-// ── SERVICE WORKER REGISTRATION ──
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('SW registered:', reg.scope))
-      .catch(err => console.log('SW registration failed:', err));
-  });
-}
-
-// ── OFFLINE DETECTION ──
-function updateOnlineStatus() {
-  const banner = document.getElementById('offline-banner');
-  const stale  = document.getElementById('stale-badge');
-  if (!navigator.onLine) {
-    banner && banner.classList.add('show');
-    stale  && stale.classList.add('show');
-    document.body.style.paddingTop = '42px';
-  } else {
-    banner && banner.classList.remove('show');
-    stale  && stale.classList.remove('show');
-    document.body.style.paddingTop = '0';
-    // Refresh data when back online
-    if (customer) {
-      loadHistory();
-    }
-  }
-}
-
-window.addEventListener('online',  updateOnlineStatus);
-window.addEventListener('offline', updateOnlineStatus);
-updateOnlineStatus();
-
-// Timeout — if loading takes more than 8 seconds show error
-let loadTimeout = setTimeout(() => {
-  const loadingEl = document.getElementById('loading');
-  const textEl    = document.getElementById('loading-text');
-  if (loadingEl && loadingEl.style.display !== 'none') {
-    if (textEl) textEl.textContent = 'Taking too long — check your connection';
-    const cached = cardSerial ? localStorage.getItem('cached_customer_' + cardSerial) : null;
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        customer = parsed.customer;
-        merchant = parsed.merchant;
-        document.documentElement.style.setProperty('--brand', merchant.brand_color);
-        renderCard();
-        loadingEl.style.display = 'none';
-        document.getElementById('main').style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;visibility:visible;';
-      } catch(e) {}
-    }
-  }
-}, 8000);
-
-// ── SERVICE WORKER + OFFLINE ──
-let isOnline = navigator.onLine;
-
-function updateOnlineStatus() {
-  isOnline = navigator.onLine;
-  const banner = document.getElementById('offline-banner');
-  const dot    = document.getElementById('offline-dot');
-  const text   = document.getElementById('offline-text');
-  const stale  = document.getElementById('stale-badge');
-
-  if (!isOnline) {
-    banner.classList.add('show');
-    dot.className   = 'offline-dot';
-    text.textContent = 'You're offline — showing your last saved card';
-    if (stale) stale.style.display = 'block';
-  } else {
-    dot.className   = 'offline-dot online-dot';
-    text.textContent = 'Back online — syncing...';
-    banner.classList.add('show');
-    if (stale) stale.style.display = 'none';
-    setTimeout(() => {
-      banner.classList.remove('show');
-      if (customer) {
-        updateCardFromDB();
-      }
-    }, 2500);
-  }
-}
-
-async function updateCardFromDB() {
-  if (!cardSerial || !isOnline) return;
-  try {
-    const { data: c } = await sb
-      .from('customers')
-      .select('*, merchants(*)')
-      .eq('card_serial', cardSerial)
-      .single();
-    if (c) {
-      customer = c;
-      merchant = c.merchants;
-      renderCard();
-    }
-  } catch(e) {}
-}
-
-window.addEventListener('online',  updateOnlineStatus);
-window.addEventListener('offline', updateOnlineStatus);
-
-// Register service worker
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').then(reg => {
-    console.log('SW registered');
-    // Listen for sync messages from SW
-    navigator.serviceWorker.addEventListener('message', e => {
-      if (e.data?.type === 'SYNC_NOW') updateCardFromDB();
-    });
-  }).catch(() => {});
-}
-
-// Trigger background sync when back online
-window.addEventListener('online', () => {
-  if ('serviceWorker' in navigator && 'SyncManager' in window) {
-    navigator.serviceWorker.ready.then(reg => {
-      reg.sync.register('card-sync').catch(() => {});
-    });
-  }
-});
-
-init();
-
-// PWA install prompt
-let deferredPrompt;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  document.getElementById('install-banner').style.display = 'flex';
-});
-
-document.getElementById('install-btn') && document.getElementById('install-btn').addEventListener('click', async () => {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    document.getElementById('install-banner').style.display = 'none';
-  }
-});
-
-window.addEventListener('appinstalled', () => {
-  document.getElementById('install-banner').style.display = 'none';
-});
-
-// iOS hint — show if on iOS and not already installed
+// ── iOS HOME SCREEN HINT ──
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
 if (isIOS && !isStandalone) {
   document.getElementById('ios-hint').style.display = 'block';
 }
+
+// ── SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// ── BOOT ──
+init();
 </script>
 </body>
 </html>
