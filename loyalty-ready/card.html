@@ -395,10 +395,10 @@
 
 <div class="loading" id="loading">
   <div class="ring"></div>
-  <span>Loading your card...</span>
+  <span id="loading-text">Loading your card...</span>
 </div>
 
-<div id="main" style="display:none;width:100%;flex-direction:column;align-items:center;">
+<div id="main" style="display:none;width:100%;flex-direction:column;align-items:center;visibility:hidden;">
 
   <!-- LOYALTY CARD -->
   <div class="loyalty-card" id="loyalty-card">
@@ -554,7 +554,7 @@ async function init() {
         document.documentElement.style.setProperty('--brand', merchant.brand_color);
         renderCard();
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('main').style.display = 'flex';
+        const m2 = document.getElementById('main'); m2.style.display = 'flex'; m2.style.visibility = 'visible';
         updateOnlineStatus();
         return;
       } catch(e) { console.error('Offline cache error:', e); }
@@ -580,7 +580,7 @@ async function init() {
           document.documentElement.style.setProperty('--brand', merchant.brand_color);
           renderCard();
           document.getElementById('loading').style.display = 'none';
-          document.getElementById('main').style.display = 'flex';
+          const m2 = document.getElementById('main'); m2.style.display = 'flex'; m2.style.visibility = 'visible';
           return;
         }
       }
@@ -598,12 +598,15 @@ async function init() {
     // Cache customer + merchant data for offline use
     localStorage.setItem('cached_customer_' + cardSerial, JSON.stringify({ customer: c, merchant: merchant }));
 
+    clearTimeout(loadTimeout);
     renderCard();
     loadHistory();
     subscribeToUpdates();
 
+    const mainEl = document.getElementById('main');
     document.getElementById('loading').style.display = 'none';
-    document.getElementById('main').style.display = 'flex';
+    mainEl.style.display = 'flex';
+    mainEl.style.visibility = 'visible';
 
   } catch(e) {
     console.error('Fatal load crash:', e);
@@ -618,7 +621,7 @@ async function init() {
         document.documentElement.style.setProperty('--brand', merchant.brand_color);
         renderCard();
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('main').style.display = 'flex';
+        const m2 = document.getElementById('main'); m2.style.display = 'flex'; m2.style.visibility = 'visible';
         updateOnlineStatus();
         return;
       } catch(e2) { console.error('Cache parse failed:', e2); }
@@ -801,6 +804,29 @@ function updateOnlineStatus() {
 window.addEventListener('online',  updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
+
+// Timeout — if loading takes more than 8 seconds show error
+let loadTimeout = setTimeout(() => {
+  const loadingEl = document.getElementById('loading');
+  const textEl    = document.getElementById('loading-text');
+  if (loadingEl && loadingEl.style.display !== 'none') {
+    if (textEl) textEl.textContent = 'Taking too long — check your connection';
+    const cached = cardSerial ? localStorage.getItem('cached_customer_' + cardSerial) : null;
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        customer = parsed.customer;
+        merchant = parsed.merchant;
+        document.documentElement.style.setProperty('--brand', merchant.brand_color);
+        renderCard();
+        loadingEl.style.display = 'none';
+        const mainEl = document.getElementById('main');
+        mainEl.style.display = 'flex';
+        mainEl.style.visibility = 'visible';
+      } catch(e) {}
+    }
+  }
+}, 8000);
 
 // ── SERVICE WORKER + OFFLINE ──
 let isOnline = navigator.onLine;
