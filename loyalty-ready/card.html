@@ -660,19 +660,32 @@ function renderCard() {
     banner.style.display = 'none';
   }
 
-  // QR code — generate once
+  // QR code — generate once, with delay for first-time visitors
   if (!qrGenerated) {
-    const qrData = JSON.stringify({ s: c.card_serial, m: m.id });
-    new QRCode(document.getElementById('qr-box'), {
-      text: qrData,
-      width: 200,
-      height: 200,
-      colorDark: '#0E0E0E',
-      colorLight: '#FFFFFF',
-      correctLevel: QRCode.CorrectLevel.H
-    });
-    document.getElementById('serial-text').textContent = c.card_serial.slice(0, 20) + '...';
     qrGenerated = true;
+    const qrData = JSON.stringify({ s: c.card_serial, m: m.id });
+    const generateQR = () => {
+      const qrBox = document.getElementById('qr-box');
+      if (!qrBox) return;
+      qrBox.innerHTML = ''; // clear any partial render
+      try {
+        new QRCode(qrBox, {
+          text: qrData,
+          width: 200,
+          height: 200,
+          colorDark: '#0E0E0E',
+          colorLight: '#FFFFFF',
+          correctLevel: QRCode.CorrectLevel.H
+        });
+        const serialEl = document.getElementById('serial-text');
+        if (serialEl) serialEl.textContent = c.card_serial.slice(0, 20) + '...';
+      } catch(e) {
+        // Retry once more after another 500ms
+        setTimeout(generateQR, 500);
+      }
+    };
+    // Small delay ensures DOM is fully painted before QR renders
+    setTimeout(generateQR, 300);
   }
 }
 
