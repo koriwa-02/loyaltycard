@@ -806,7 +806,15 @@ async function submitForm() {
 
     newCustomer = customer;
     localStorage.setItem('my_card_serial', customer.card_serial);
-    
+    localStorage.setItem('loyalty_card_serial', customer.card_serial);
+
+    // Pre-cache customer + merchant data so card.html loads instantly
+    localStorage.setItem('cached_customer_' + customer.card_serial, JSON.stringify({
+      customer: customer,
+      merchant: merchant,
+      cachedAt: Date.now()
+    }));
+
     // Open WhatsApp with card link so customer can save it to themselves
     const cardLink = window.location.origin + window.location.pathname.replace('02_enrollment.html', 'card.html') + '?id=' + customer.card_serial;
     const waMsg = encodeURIComponent('🎉 Your loyalty card for ' + merchant.name + ' is ready!\n\nTap this link anytime to check your stamps:\n' + cardLink + '\n\nSave this message so you never lose it!');
