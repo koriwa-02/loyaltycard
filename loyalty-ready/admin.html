@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — Loyalty Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --brand: #1D9E75;
+    --brand-dark: #0F6E56;
+    --brand-light: #E1F5EE;
+    --ink: #0E0E0E;
+    --ink-muted: #6B6B6B;
+    --surface: #F4F3F0;
+    --card: #FFFFFF;
+    --border: rgba(0,0,0,0.07);
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--surface);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* LOGIN */
+  .login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .login-card {
+    background: var(--card);
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .login-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .login-logo-mark {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 20px;
+  }
+
+  .login-logo-text {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+  }
+
+  .login-title {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+  }
+
+  .login-sub {
+    font-size: 14px;
+    color: var(--ink-muted);
+    margin-top: -12px;
+    font-weight: 300;
+  }
+
+  .login-input {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    background: var(--surface);
+    color: var(--ink);
+    outline: none;
+    transition: border-color .2s;
+  }
+
+  .login-input:focus { border-color: var(--brand); background: #fff; }
+
+  .login-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--brand);
+    border: none;
+    border-radius: 12px;
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    transition: background .15s;
+  }
+
+  .login-btn:hover { background: var(--brand-dark); }
+
+  .login-error {
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    color: #B91C1C;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: none;
+  }
+
+  /* DASHBOARD */
+  .dashboard { display: none; min-height: 100vh; }
+
+  /* TOPBAR */
+  .topbar {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+
+  .topbar-logo {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    background: var(--brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+  }
+
+  .topbar-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+
+  .merchant-selector {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    background: var(--surface);
+    color: var(--ink);
+    outline: none;
+    cursor: pointer;
+  }
+
+  .logout-btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: none;
+    font-size: 13px;
+    color: var(--ink-muted);
+    cursor: pointer;
+    transition: background .15s;
+  }
+
+  .logout-btn:hover { background: var(--surface); }
+
+  /* MAIN CONTENT */
+  .main {
+    padding: 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+  }
+
+  .page-sub {
+    font-size: 14px;
+    color: var(--ink-muted);
+    margin-top: 4px;
+    font-weight: 300;
+  }
+
+  .date-filter {
+    display: flex;
+    gap: 8px;
+  }
+
+  .filter-btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--ink-muted);
+    transition: all .15s;
+    font-family: var(--font-body);
+  }
+
+  .filter-btn.active {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+  }
+
+  /* STAT CARDS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--brand);
+    opacity: 0;
+    transition: opacity .2s;
+  }
+
+  .stat-card:hover::before { opacity: 1; }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--ink-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    color: var(--ink);
+    line-height: 1;
+  }
+
+  .stat-change {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+  }
+
+  .stat-change.up { color: var(--brand); }
+  .stat-change.neutral { color: var(--ink-muted); }
+
+  .stat-icon {
+    position: absolute;
+    top: 20px; right: 20px;
+    font-size: 24px;
+    opacity: 0.12;
+  }
+
+  /* CHARTS ROW */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 768px) {
+    .charts-row { grid-template-columns: 1fr; }
+    .main { padding: 16px; }
+    .topbar { padding: 0 16px; }
+  }
+
+  .chart-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 24px;
+  }
+
+  .chart-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .chart-sub {
+    font-size: 13px;
+    color: var(--ink-muted);
+    margin-bottom: 20px;
+    font-weight: 300;
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 220px;
+  }
+
+  /* PROGRESS BAR */
+  .progress-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 8px;
+  }
+
+  .progress-item { display: flex; flex-direction: column; gap: 6px; }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+
+  .progress-label { font-weight: 500; color: var(--ink); }
+  .progress-value { color: var(--ink-muted); font-weight: 300; }
+
+  .progress-bar {
+    height: 8px;
+    background: var(--surface);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 100px;
+    background: var(--brand);
+    transition: width .8s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* CUSTOMERS TABLE */
+  .table-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .table-header {
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .table-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .table-search {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    background: var(--surface);
+    outline: none;
+    width: 220px;
+    transition: border-color .2s;
+  }
+
+  .table-search:focus { border-color: var(--brand); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    padding: 12px 24px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  td {
+    padding: 14px 24px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--ink);
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(29,158,117,0.03); }
+
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--brand-light);
+    color: var(--brand-dark);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+
+  .name-cell { display: flex; align-items: center; }
+
+  .stamp-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mini-bar {
+    width: 80px;
+    height: 5px;
+    background: var(--surface);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .mini-fill {
+    height: 100%;
+    border-radius: 100px;
+    background: var(--brand);
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .badge-green { background: var(--brand-light); color: var(--brand-dark); }
+  .badge-gray { background: var(--surface); color: var(--ink-muted); }
+  .badge-gold { background: #FEF3C7; color: #92400E; }
+
+  /* RECENT SCANS */
+  .scan-list { display: flex; flex-direction: column; }
+
+  .scan-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    transition: background .1s;
+  }
+
+  .scan-item:last-child { border-bottom: none; }
+  .scan-item:hover { background: rgba(29,158,117,0.03); }
+
+  .scan-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .scan-dot.add { background: var(--brand); }
+  .scan-dot.redeem { background: #F59E0B; }
+
+  .scan-name { font-size: 14px; font-weight: 500; flex: 1; }
+  .scan-action { font-size: 13px; color: var(--ink-muted); }
+  .scan-time { font-size: 12px; color: var(--ink-muted); white-space: nowrap; }
+
+  /* LOADING */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+  }
+
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(29,158,117,0.2);
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    padding: 40px;
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 14px;
+    font-weight: 300;
+  }
+
+  .refresh-btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    font-size: 13px;
+    color: var(--ink-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background .15s;
+    font-family: var(--font-body);
+  }
+
+  .refresh-btn:hover { background: var(--surface); }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+</div>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen" style="display:none">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-mark">✦</div>
+      <div class="login-logo-text">Loyalty Admin</div>
+    </div>
+    <div>
+      <div class="login-title">Welcome back</div>
+      <div class="login-sub">Admin access only</div>
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <input class="login-input" type="password" id="admin-pass" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Access Dashboard</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">✦</div>
+      <div class="topbar-title">Loyalty Admin</div>
+    </div>
+    <div class="topbar-right">
+      <select class="merchant-selector" id="merchant-selector" onchange="loadDashboard()">
+        <option value="all">All merchants</option>
+      </select>
+      <button class="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
+      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <div class="page-header">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub" id="last-updated">Loading...</div>
+      </div>
+      <div class="date-filter">
+        <button class="filter-btn active" onclick="setFilter('month', this)">This month</button>
+        <button class="filter-btn" onclick="setFilter('week', this)">This week</button>
+        <button class="filter-btn" onclick="setFilter('today', this)">Today</button>
+        <button class="filter-btn" onclick="setFilter('all', this)">All time</button>
+      </div>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-label">Cards registered</div>
+        <div class="stat-value" id="stat-customers">—</div>
+        <div class="stat-change neutral" id="stat-customers-sub">Total customers enrolled</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⭐</div>
+        <div class="stat-label">Stamps given</div>
+        <div class="stat-value" id="stat-stamps">—</div>
+        <div class="stat-change neutral" id="stat-stamps-sub">Total scan events</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-label">Rewards redeemed</div>
+        <div class="stat-value" id="stat-rewards">—</div>
+        <div class="stat-change neutral" id="stat-rewards-sub">Completed loyalty cycles</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-label">Completion rate</div>
+        <div class="stat-value" id="stat-rate">—</div>
+        <div class="stat-change neutral" id="stat-rate-sub">Users who earned a reward</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🔗</div>
+        <div class="stat-label">Referrals</div>
+        <div class="stat-value" id="stat-referrals">—</div>
+        <div class="stat-change neutral">Customers from referral links</div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">Stamps over time</div>
+        <div class="chart-sub">Daily stamp activity</div>
+        <div class="chart-wrap">
+          <canvas id="stamps-chart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Customer progress</div>
+        <div class="chart-sub">Where customers are in their journey</div>
+        <div class="progress-section" id="progress-section"></div>
+      </div>
+    </div>
+
+    <!-- TABLE + RECENT SCANS -->
+    <div class="charts-row">
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">Customers</div>
+          <input class="table-search" type="text" placeholder="Search by name..." oninput="filterTable(this.value)" id="search-input">
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Stamps</th>
+                <th>Lifetime</th>
+                <th>Status</th>
+                <th>Joined</th>
+              </tr>
+            </thead>
+            <tbody id="customers-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">Recent scans</div>
+        </div>
+        <div class="scan-list" id="scan-list"></div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL  = 'https://lvzzcwsttvbaqsnuwdze.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME';
+const ADMIN_PASS    = 'koriwa2025';  // ← change this to your password
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+let currentFilter = 'month';
+let allCustomers  = [];
+let stampsChart   = null;
+
+// ── AUTH ──
+function doLogin() {
+  const pass = document.getElementById('admin-pass').value;
+  if (pass === ADMIN_PASS) {
+    sessionStorage.setItem('admin_auth', '1');
+    showDashboard();
+  } else {
+    const err = document.getElementById('login-error');
+    err.textContent = 'Wrong password. Try again.';
+    err.style.display = 'block';
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('admin_auth');
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ── INIT ──
+async function init() {
+  document.getElementById('loading-overlay').style.display = 'flex';
+  if (sessionStorage.getItem('admin_auth') === '1') {
+    await showDashboard();
+  } else {
+    document.getElementById('loading-overlay').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+}
+
+async function showDashboard() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  await loadMerchants();
+  await loadDashboard();
+}
+
+// ── MERCHANTS ──
+async function loadMerchants() {
+  const { data } = await sb.from('merchants').select('id, name, slug').eq('active', true);
+  if (!data) return;
+  const sel = document.getElementById('merchant-selector');
+  data.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.name;
+    sel.appendChild(opt);
+  });
+}
+
+// ── DATE FILTER ──
+function getDateFrom() {
+  const now = new Date();
+  if (currentFilter === 'today') {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  } else if (currentFilter === 'week') {
+    const d = new Date(now); d.setDate(d.getDate() - 7); return d.toISOString();
+  } else if (currentFilter === 'month') {
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  }
+  return null;
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadDashboard();
+}
+
+// ── MAIN LOAD ──
+async function loadDashboard() {
+  document.getElementById('loading-overlay').style.display = 'flex';
+  const merchantId = document.getElementById('merchant-selector').value;
+  const dateFrom   = getDateFrom();
+
+  try {
+    await Promise.all([
+      loadStats(merchantId, dateFrom),
+      loadCustomers(merchantId),
+      loadRecentScans(merchantId, dateFrom),
+      loadChart(merchantId, dateFrom),
+    ]);
+
+    const now = new Date();
+    document.getElementById('last-updated').textContent =
+      `Last updated ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+  } catch(e) {
+    console.error(e);
+  }
+
+  document.getElementById('loading-overlay').style.display = 'none';
+}
+
+// ── STATS ──
+async function loadStats(merchantId, dateFrom) {
+  // Customers registered
+  let custQ = sb.from('customers').select('id, stamps, lifetime_stamps, referred_by', { count: 'exact' });
+  if (merchantId !== 'all') custQ = custQ.eq('merchant_id', merchantId);
+  if (dateFrom) custQ = custQ.gte('created_at', dateFrom);
+  const { data: customers, count: custCount } = await custQ;
+
+  // Stamps given
+  let stampQ = sb.from('scan_events').select('id, action', { count: 'exact' }).eq('action', 'add_stamp');
+  if (merchantId !== 'all') stampQ = stampQ.eq('merchant_id', merchantId);
+  if (dateFrom) stampQ = stampQ.gte('created_at', dateFrom);
+  const { count: stampCount } = await stampQ;
+
+  // Rewards redeemed
+  let rewardQ = sb.from('scan_events').select('id', { count: 'exact' }).eq('action', 'redeem_reward');
+  if (merchantId !== 'all') rewardQ = rewardQ.eq('merchant_id', merchantId);
+  if (dateFrom) rewardQ = rewardQ.gte('created_at', dateFrom);
+  const { count: rewardCount } = await rewardQ;
+
+  // Referrals
+  let refQ = sb.from('customers').select('id', { count: 'exact' }).not('referred_by', 'is', null);
+  if (merchantId !== 'all') refQ = refQ.eq('merchant_id', merchantId);
+  const { count: refCount } = await refQ;
+
+  // Completion rate
+  const totalCust = custCount || 0;
+  const rate = totalCust > 0 ? Math.round(((rewardCount || 0) / totalCust) * 100) : 0;
+
+  document.getElementById('stat-customers').textContent  = (custCount || 0).toLocaleString();
+  document.getElementById('stat-stamps').textContent     = (stampCount || 0).toLocaleString();
+  document.getElementById('stat-rewards').textContent    = (rewardCount || 0).toLocaleString();
+  document.getElementById('stat-rate').textContent       = rate + '%';
+  document.getElementById('stat-referrals').textContent  = (refCount || 0).toLocaleString();
+
+  document.getElementById('stat-customers-sub').textContent  = `${custCount || 0} cards enrolled`;
+  document.getElementById('stat-stamps-sub').textContent     = `${stampCount || 0} scans logged`;
+  document.getElementById('stat-rewards-sub').textContent    = `${rewardCount || 0} rewards given`;
+  document.getElementById('stat-rate-sub').textContent       = `${rate}% completed a full cycle`;
+
+  // Progress breakdown
+  if (customers && customers.length > 0) {
+    const groups = { '0 stamps': 0, '1–3 stamps': 0, '4–7 stamps': 0, 'Reward ready': 0 };
+    customers.forEach(c => {
+      if (c.stamps === 0) groups['0 stamps']++;
+      else if (c.stamps <= 3) groups['1–3 stamps']++;
+      else if (c.stamps <= 7) groups['4–7 stamps']++;
+      else groups['Reward ready']++;
+    });
+
+    const total = customers.length;
+    const prog = document.getElementById('progress-section');
+    prog.innerHTML = '';
+    Object.entries(groups).forEach(([label, count]) => {
+      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+      prog.innerHTML += `
+        <div class="progress-item">
+          <div class="progress-header">
+            <span class="progress-label">${label}</span>
+            <span class="progress-value">${count} (${pct}%)</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${pct}%"></div>
+          </div>
+        </div>`;
+    });
+  }
+}
+
+// ── CUSTOMERS TABLE ──
+async function loadCustomers(merchantId) {
+  let q = sb.from('customers').select('id, name, phone, stamps, lifetime_stamps, created_at, referred_by, merchants(total_stamps)').order('created_at', { ascending: false }).limit(50);
+  if (merchantId !== 'all') q = q.eq('merchant_id', merchantId);
+  const { data } = await q;
+  if (!data) return;
+  allCustomers = data;
+  renderTable(data);
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('customers-table');
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No customers yet</td></tr>'; return; }
+
+  tbody.innerHTML = data.map(c => {
+    const initials = c.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    const total    = c.merchants?.total_stamps || 10;
+    const pct      = Math.min(100, Math.round((c.stamps / total) * 100));
+    const joined   = new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    let badge = '';
+    if (c.stamps >= total) badge = '<span class="badge badge-gold">🏆 Ready</span>';
+    else if (c.stamps > 0) badge = '<span class="badge badge-green">Active</span>';
+    else badge = '<span class="badge badge-gray">New</span>';
+
+    return `<tr>
+      <td><div class="name-cell"><div class="avatar">${initials}</div>${c.name}</div></td>
+      <td>
+        <div class="stamp-bar">
+          <div class="mini-bar"><div class="mini-fill" style="width:${pct}%"></div></div>
+          <span style="font-size:12px;color:var(--ink-muted)">${c.stamps}/${total}</span>
+        </div>
+      </td>
+      <td style="color:var(--ink-muted)">${c.lifetime_stamps}</td>
+      <td>${badge}</td>
+      <td style="color:var(--ink-muted);font-size:13px">${joined}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterTable(query) {
+  const filtered = allCustomers.filter(c => c.name.toLowerCase().includes(query.toLowerCase()));
+  renderTable(filtered);
+}
+
+// ── RECENT SCANS ──
+async function loadRecentScans(merchantId, dateFrom) {
+  let q = sb.from('scan_events').select('action, stamps_delta, created_at, customers(name)').order('created_at', { ascending: false }).limit(12);
+  if (merchantId !== 'all') q = q.eq('merchant_id', merchantId);
+  if (dateFrom) q = q.gte('created_at', dateFrom);
+  const { data } = await q;
+
+  const list = document.getElementById('scan-list');
+  if (!data || !data.length) { list.innerHTML = '<div class="empty-state">No scans yet</div>'; return; }
+
+  list.innerHTML = data.map(e => {
+    const time = new Date(e.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const date = new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const isAdd = e.action === 'add_stamp';
+    return `<div class="scan-item">
+      <div class="scan-dot ${isAdd ? 'add' : 'redeem'}"></div>
+      <div class="scan-name">${e.customers?.name || 'Unknown'}</div>
+      <div class="scan-action">${isAdd ? `+${e.stamps_delta} stamp` : '🎁 Reward'}</div>
+      <div class="scan-time">${date} ${time}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── CHART ──
+async function loadChart(merchantId, dateFrom) {
+  const from = dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  let q = sb.from('scan_events').select('created_at, action').eq('action', 'add_stamp').gte('created_at', from).order('created_at', { ascending: true });
+  if (merchantId !== 'all') q = q.eq('merchant_id', merchantId);
+  const { data } = await q;
+
+  const days = {};
+  const now  = new Date();
+  const daysCount = currentFilter === 'today' ? 1 : currentFilter === 'week' ? 7 : currentFilter === 'month' ? 30 : 30;
+
+  for (let i = daysCount - 1; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    days[key] = 0;
+  }
+
+  if (data) {
+    data.forEach(e => {
+      const key = new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (days[key] !== undefined) days[key]++;
+    });
+  }
+
+  const labels = Object.keys(days);
+  const values = Object.values(days);
+
+  if (stampsChart) stampsChart.destroy();
+
+  const ctx = document.getElementById('stamps-chart').getContext('2d');
+  stampsChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Stamps',
+        data: values,
+        backgroundColor: 'rgba(29,158,117,0.15)',
+        borderColor: '#1D9E75',
+        borderWidth: 1.5,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#6B6B6B', maxTicksLimit: 8 } },
+        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 }, color: '#6B6B6B', stepSize: 1 }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+init();
+</script>
+</body>
+</html>
