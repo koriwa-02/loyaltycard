@@ -349,12 +349,48 @@
     font-weight: 500;
   }
   .stale-badge.show { display: block; }
+  .offline-banner {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #0E0E0E;
+    color: #fff;
+    padding: 10px 20px;
+    font-size: 13px;
+    text-align: center;
+    z-index: 999;
+    font-family: var(--font-body);
+    font-weight: 500;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .offline-banner.show { display: flex; }
+  .offline-dot { width: 8px; height: 8px; border-radius: 50%; background: #EF4444; flex-shrink: 0; }
+  .online-dot  { background: #1D9E75; }
+  .stale-badge {
+    display: none;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(239,68,68,0.1);
+    color: #EF4444;
+    border: 1px solid rgba(239,68,68,0.2);
+    margin: 0 auto;
+    width: fit-content;
+  }
 </style>
 </head>
 <body>
 
 <div class="offline-banner" id="offline-banner">
   ⚡ You're offline — showing your last saved card. Stamps will sync when you reconnect.
+</div>
+
+<!-- Offline banner -->
+<div class="offline-banner" id="offline-banner">
+  <div class="offline-dot" id="offline-dot"></div>
+  <span id="offline-text">You're offline — showing cached card</span>
 </div>
 
 <div class="loading" id="loading">
@@ -380,6 +416,8 @@
         <div class="reward-value" id="c-reward">1 free coffee</div>
       </div>
       <div class="stamp-count" id="c-count">0 / 10</div>
+        </div>
+        <div class="stale-badge" id="stale-badge">⚡ Offline — syncs when connected</div>
     </div>
   </div>
 
@@ -728,6 +766,74 @@ function updateOnlineStatus() {
 window.addEventListener('online',  updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
+
+// ── SERVICE WORKER + OFFLINE ──
+let isOnline = navigator.onLine;
+
+function updateOnlineStatus() {
+  isOnline = navigator.onLine;
+  const banner = document.getElementById('offline-banner');
+  const dot    = document.getElementById('offline-dot');
+  const text   = document.getElementById('offline-text');
+  const stale  = document.getElementById('stale-badge');
+
+  if (!isOnline) {
+    banner.classList.add('show');
+    dot.className   = 'offline-dot';
+    text.textContent = 'You're offline — showing your last saved card';
+    if (stale) stale.style.display = 'block';
+  } else {
+    dot.className   = 'offline-dot online-dot';
+    text.textContent = 'Back online — syncing...';
+    banner.classList.add('show');
+    if (stale) stale.style.display = 'none';
+    setTimeout(() => {
+      banner.classList.remove('show');
+      if (customer) {
+        updateCardFromDB();
+      }
+    }, 2500);
+  }
+}
+
+async function updateCardFromDB() {
+  if (!cardSerial || !isOnline) return;
+  try {
+    const { data: c } = await sb
+      .from('customers')
+      .select('*, merchants(*)')
+      .eq('card_serial', cardSerial)
+      .single();
+    if (c) {
+      customer = c;
+      merchant = c.merchants;
+      renderCard();
+    }
+  } catch(e) {}
+}
+
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    console.log('SW registered');
+    // Listen for sync messages from SW
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'SYNC_NOW') updateCardFromDB();
+    });
+  }).catch(() => {});
+}
+
+// Trigger background sync when back online
+window.addEventListener('online', () => {
+  if ('serviceWorker' in navigator && 'SyncManager' in window) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.sync.register('card-sync').catch(() => {});
+    });
+  }
+});
 
 init();
 
