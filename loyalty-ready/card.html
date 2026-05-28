@@ -323,9 +323,39 @@
   .install-banner-sub { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; font-weight: 300; }
   .install-banner-btn { padding: 8px 16px; border-radius: 20px; border: none; background: var(--brand); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
   .ios-hint { display: none; width: calc(100% - 32px); max-width: 400px; margin-top: 12px; padding: 12px 16px; background: #0E0E0E; border-radius: 14px; font-size: 12px; color: rgba(255,255,255,0.7); text-align: center; line-height: 1.6; }
+  .offline-banner {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #F59E0B;
+    color: #fff;
+    text-align: center;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 999;
+    font-family: var(--font-body);
+  }
+  .offline-banner.show { display: block; }
+  .stale-badge {
+    display: none;
+    font-size: 11px;
+    background: #FEF3C7;
+    color: #92400E;
+    padding: 4px 12px;
+    border-radius: 20px;
+    text-align: center;
+    margin: 0 16px;
+    font-weight: 500;
+  }
+  .stale-badge.show { display: block; }
 </style>
 </head>
 <body>
+
+<div class="offline-banner" id="offline-banner">
+  ⚡ You're offline — showing your last saved card. Stamps will sync when you reconnect.
+</div>
 
 <div class="loading" id="loading">
   <div class="ring"></div>
@@ -368,6 +398,7 @@
     <div id="qr-box"></div>
     <div class="serial-text" id="serial-text"></div>
     <div class="qr-label" style="font-size:11px">Updated live — no refresh needed</div>
+    <div class="stale-badge" id="stale-badge">Cached data — reconnect to update</div>
   </div>
 
   <!-- SCAN HISTORY -->
@@ -481,6 +512,21 @@ async function init() {
       .single();
 
     if (ce || !c) {
+      // If offline, try to show cached data from localStorage
+      if (!navigator.onLine) {
+        const cached = localStorage.getItem('cached_customer_' + cardSerial);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          customer = parsed.customer;
+          merchant = parsed.merchant;
+          document.title = customer.name + ' — ' + merchant.name + ' Loyalty Card';
+          document.documentElement.style.setProperty('--brand', merchant.brand_color);
+          renderCard();
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('main').style.display = 'flex';
+          return;
+        }
+      }
       console.error('Supabase data error:', ce);
       showNotFound();
       return;
@@ -491,6 +537,9 @@ async function init() {
 
     document.title = `${c.name} — ${merchant.name} Loyalty Card`;
     document.documentElement.style.setProperty('--brand', merchant.brand_color);
+
+    // Cache customer + merchant data for offline use
+    localStorage.setItem('cached_customer_' + cardSerial, JSON.stringify({ customer: c, merchant: merchant }));
 
     renderCard();
     loadHistory();
@@ -647,6 +696,38 @@ function showNotFound() {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('not-found').style.display = 'flex';
 }
+
+// ── SERVICE WORKER REGISTRATION ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
+
+// ── OFFLINE DETECTION ──
+function updateOnlineStatus() {
+  const banner = document.getElementById('offline-banner');
+  const stale  = document.getElementById('stale-badge');
+  if (!navigator.onLine) {
+    banner && banner.classList.add('show');
+    stale  && stale.classList.add('show');
+    document.body.style.paddingTop = '42px';
+  } else {
+    banner && banner.classList.remove('show');
+    stale  && stale.classList.remove('show');
+    document.body.style.paddingTop = '0';
+    // Refresh data when back online
+    if (customer) {
+      loadHistory();
+    }
+  }
+}
+
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
 
 init();
 
