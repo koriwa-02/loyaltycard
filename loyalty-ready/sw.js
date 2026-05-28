@@ -1,4 +1,4 @@
-const CACHE_NAME = 'loyalty-card-v1';
+const CACHE_NAME = 'loyalty-v1';
 const STATIC_ASSETS = [
   './card.html',
   './manifest.json',
@@ -12,9 +12,7 @@ const STATIC_ASSETS = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(STATIC_ASSETS).catch(err => {
-        console.log('Cache install partial error:', err);
-      });
+      return cache.addAll(STATIC_ASSETS).catch(() => {});
     })
   );
   self.skipWaiting();
@@ -30,32 +28,27 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Fetch — cache first for static, network first for Supabase
+// Fetch strategy:
+// - Supabase API calls: network first, fall back to cache
+// - Everything else: cache first, fall back to network
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Supabase API calls — network first, fallback to cache
-  if (url.hostname.includes('supabase.co')) {
+  // Supabase realtime websockets — skip, can't cache
+  if (event.request.url.includes('supabase.co/realtime')) return;
+
+  // Supabase REST API — network first, cache response for offline
+  if (event.request.url.includes('supabase.co/rest')) {
     event.respondWith(
       fetch(event.request.clone())
         .then(response => {
-          // Cache successful Supabase responses
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
           }
           return response;
         })
-        .catch(() => {
-          // Offline — serve cached Supabase response
-          return caches.match(event.request).then(cached => {
-            if (cached) return cached;
-            // Return empty JSON so app doesn't crash
-            return new Response(JSON.stringify({ data: null, error: { message: 'Offline' } }), {
-              headers: { 'Content-Type': 'application/json' }
-            });
-          });
-        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
@@ -70,31 +63,18 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
         return response;
-      }).catch(() => cached || new Response('Offline', { status: 503 }));
+      }).catch(() => cached);
     })
   );
 });
 
-// Background sync — retry stamp updates when back online
+// Background sync — when connection restored, notify all clients
 self.addEventListener('sync', event => {
-  if (event.tag === 'sync-stamps') {
-    event.waitUntil(syncPendingStamps());
+  if (event.tag === 'card-sync') {
+    event.waitUntil(
+      self.clients.matchAll().then(clients =>
+        clients.forEach(client => client.postMessage({ type: 'SYNC_NOW' }))
+      )
+    );
   }
-});
-
-async function syncPendingStamps() {
-  // Placeholder for future offline stamp queue
-  console.log('Syncing pending stamps...');
-}
-
-// Push notification handler (Phase 3)
-self.addEventListener('push', event => {
-  if (!event.data) return;
-  const data = event.data.json();
-  self.registration.showNotification(data.title || 'Loyalty Update', {
-    body: data.body || 'You have a new stamp!',
-    icon: './logo.png',
-    badge: './logo.png',
-    data: data
-  });
 });
