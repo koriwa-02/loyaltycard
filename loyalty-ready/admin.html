@@ -894,7 +894,7 @@ async function loadStats(merchantId, dateFrom) {
 
 // ── CUSTOMERS TABLE ──
 async function loadCustomers(merchantId) {
-  let q = sb.from('customers').select('id, name, phone, stamps, lifetime_stamps, created_at, referred_by, merchants(total_stamps)').order('created_at', { ascending: false }).limit(50);
+  let q = sb.from('customers').select('id, name, stamps, lifetime_stamps, created_at, referred_by, merchants(total_stamps)').order('created_at', { ascending: false }).limit(50);
   if (merchantId !== 'all') q = q.eq('merchant_id', merchantId);
   const { data } = await q;
   if (!data) return;
