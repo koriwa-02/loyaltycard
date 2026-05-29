@@ -10,8 +10,6 @@
 <meta name="theme-color" content="#1D9E75">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=180&h=180&fit=crop&q=80">
-<link rel="apple-touch-icon" sizes="152x152" href="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=152&h=152&fit=crop&q=80">
-<link rel="apple-touch-icon" sizes="180x180" href="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=180&h=180&fit=crop&q=80">
 <title>My Loyalty Card</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -41,8 +39,6 @@
     padding-bottom: 48px;
     color: var(--ink);
   }
-
-  /* OFFLINE BANNER */
   .offline-banner {
     display: none;
     position: fixed;
@@ -53,18 +49,14 @@
     font-size: 13px;
     text-align: center;
     z-index: 999;
-    font-family: var(--font-body);
-    font-weight: 500;
     align-items: center;
     justify-content: center;
     gap: 8px;
   }
   .offline-banner.show { display: flex; }
   .conn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .conn-dot.red   { background: #EF4444; }
+  .conn-dot.red { background: #EF4444; }
   .conn-dot.green { background: #1D9E75; }
-
-  /* LOADING */
   .loading {
     display: flex;
     flex-direction: column;
@@ -84,8 +76,6 @@
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* LOYALTY CARD */
   .loyalty-card {
     width: calc(100% - 32px);
     max-width: 400px;
@@ -118,35 +108,18 @@
     background: rgba(255,255,255,0.05);
     pointer-events: none;
   }
-  .card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
-    position: relative;
-    z-index: 1;
-  }
-  .card-shop { font-family: var(--font-display); font-size: 14px; font-weight: 600; opacity: 0.85; margin-bottom: 4px; }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; position: relative; z-index: 1; }
+  .card-shop { font-family: var(--font-display); font-size: 14px; font-weight: 600; opacity: 0.85; }
   .card-name { font-size: 22px; font-family: var(--font-display); font-weight: 800; margin-bottom: 16px; position: relative; z-index: 1; letter-spacing: -0.02em; }
   .card-emoji { font-size: 28px; }
   .stamps-wrap { position: relative; z-index: 1; margin-bottom: 20px; }
   .stamps-grid { display: flex; flex-wrap: wrap; gap: 7px; }
-  .stamp {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.35);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 15px;
-  }
+  .stamp { width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.35); display: flex; align-items: center; justify-content: center; font-size: 15px; }
   .stamp.filled { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.8); }
   .card-bottom { display: flex; justify-content: space-between; align-items: flex-end; position: relative; z-index: 1; }
   .reward-label { font-size: 11px; opacity: 0.7; margin-bottom: 2px; font-weight: 300; }
   .reward-value { font-size: 14px; font-weight: 600; }
-  .stamp-count  { font-size: 13px; opacity: 0.7; }
-
-  /* REWARD BANNER */
+  .stamp-count { font-size: 13px; opacity: 0.7; }
   .reward-banner {
     display: none;
     width: calc(100% - 32px);
@@ -162,8 +135,6 @@
   .reward-banner-icon { font-size: 28px; }
   .reward-banner-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: #92600A; }
   .reward-banner-sub { font-size: 12px; color: #B07A20; margin-top: 2px; font-weight: 300; }
-
-  /* QR SECTION */
   .qr-card {
     background: var(--card-bg);
     border-radius: 20px;
@@ -180,9 +151,7 @@
   .qr-label { font-size: 13px; color: var(--ink-muted); text-align: center; font-weight: 300; line-height: 1.5; }
   .qr-label strong { color: var(--ink); font-weight: 500; }
   #qr-box canvas, #qr-box img { border-radius: 8px; }
-  .serial-text { font-family: monospace; font-size: 11px; color: var(--ink-muted); background: var(--surface); padding: 6px 12px; border-radius: 8px; letter-spacing: 0.05em; }
-
-  /* HISTORY */
+  .serial-text { font-family: monospace; font-size: 11px; color: var(--ink-muted); background: var(--surface); padding: 6px 12px; border-radius: 8px; }
   .history-card {
     background: var(--card-bg);
     border-radius: 20px;
@@ -196,12 +165,10 @@
   .history-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
   .history-item:last-child { border: none; }
   .h-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .h-dot.add    { background: #1D9E75; }
+  .h-dot.add { background: #1D9E75; }
   .h-dot.redeem { background: #F4A100; }
-  .h-label { font-size: 13px; font-weight: 500; flex: 1; color: var(--ink); }
-  .h-date  { font-size: 11px; color: var(--ink-muted); }
-
-  /* BUTTONS */
+  .h-label { font-size: 13px; font-weight: 500; flex: 1; }
+  .h-date { font-size: 11px; color: var(--ink-muted); }
   .wa-btn {
     width: calc(100% - 32px);
     max-width: 400px;
@@ -213,7 +180,6 @@
     font-family: var(--font-display);
     font-size: 15px;
     font-weight: 700;
-    text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -235,8 +201,6 @@
     color: var(--ink-muted);
     cursor: pointer;
   }
-
-  /* INSTALL HINT */
   .ios-hint {
     display: none;
     width: calc(100% - 32px);
@@ -250,8 +214,6 @@
     text-align: center;
     line-height: 1.6;
   }
-
-  /* NOT FOUND */
   .not-found {
     display: flex;
     flex-direction: column;
@@ -262,45 +224,39 @@
     text-align: center;
     padding: 32px;
   }
-  .not-found-icon  { font-size: 48px; }
+  .not-found-icon { font-size: 48px; }
   .not-found-title { font-family: var(--font-display); font-size: 22px; font-weight: 800; }
-  .not-found-sub   { font-size: 14px; color: var(--ink-muted); font-weight: 300; }
+  .not-found-sub { font-size: 14px; color: var(--ink-muted); font-weight: 300; }
 </style>
 </head>
 <body>
 
-<!-- Offline banner -->
 <div class="offline-banner" id="offline-banner">
   <div class="conn-dot red" id="conn-dot"></div>
   <span id="offline-text">You're offline — showing cached card</span>
 </div>
 
-<!-- Loading -->
 <div class="loading" id="loading">
   <div class="ring"></div>
   <span>Loading your card...</span>
 </div>
 
-<!-- Main card view -->
 <div id="main" style="display:none;width:100%;flex-direction:column;align-items:center;">
-
   <div class="loyalty-card" id="loyalty-card" style="background:#1D9E75">
     <div class="card-top">
-      <div>
-        <div class="card-shop" id="c-shop">Loading...</div>
-      </div>
+      <div class="card-shop" id="c-shop"></div>
       <div class="card-emoji" id="c-emoji">☕</div>
     </div>
-    <div class="card-name" id="c-name">Your Name</div>
+    <div class="card-name" id="c-name"></div>
     <div class="stamps-wrap">
       <div class="stamps-grid" id="c-stamps"></div>
     </div>
     <div class="card-bottom">
       <div>
         <div class="reward-label">Reward</div>
-        <div class="reward-value" id="c-reward">Free coffee</div>
+        <div class="reward-value" id="c-reward"></div>
       </div>
-      <div class="stamp-count" id="c-count">0 / 10</div>
+      <div class="stamp-count" id="c-count"></div>
     </div>
   </div>
 
@@ -308,18 +264,18 @@
     <div class="reward-banner-icon">🏆</div>
     <div>
       <div class="reward-banner-title">Reward ready!</div>
-      <div class="reward-banner-sub" id="reward-banner-sub">Show this to the cashier</div>
+      <div class="reward-banner-sub" id="reward-banner-sub"></div>
     </div>
   </div>
 
   <div class="qr-card">
     <div class="qr-label">Show this QR to the cashier<br><strong>at every visit</strong></div>
     <div id="qr-box"></div>
-    <div class="serial-text" id="serial-text"></div>
+    <div class="serial-text" id="serial-text">Refreshes every 5 min • Secure</div>
     <div class="qr-label" style="font-size:11px">Updates live — no refresh needed</div>
   </div>
 
-  <div class="history-card" id="history-card">
+  <div class="history-card">
     <div class="history-title">Visit history</div>
     <div id="history-list">
       <div style="font-size:13px;color:var(--ink-muted);padding:8px 0;font-weight:300">No visits yet</div>
@@ -334,12 +290,10 @@
   <button class="share-btn" onclick="shareReferral()">🎁 Invite a friend — earn bonus stamps</button>
 
   <div class="ios-hint" id="ios-hint">
-    Tap <strong style="color:#fff">Share</strong> then <strong style="color:#fff">"Add to Home Screen"</strong> to save your card
+    Tap <strong style="color:#fff">Share</strong> then <strong style="color:#fff">"Add to Home Screen"</strong>
   </div>
-
 </div>
 
-<!-- Not found -->
 <div class="not-found" id="not-found" style="display:none">
   <div class="not-found-icon">🔍</div>
   <div class="not-found-title">Card not found</div>
@@ -354,38 +308,42 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 let customer = null;
 let merchant = null;
 let qrGenerated = false;
+let qrRefreshTimer = null;
 
-// ── SERIAL DETECTION ──
+// ── IDENTIFIER RESOLUTION ──
+// Support both new (access_secret) and legacy (card_serial) systems
 function getClean(val) {
   if (!val) return null;
-  const clean = String(val).trim().replace(/^#+/, '');
-  return (clean === '' || clean === 'null' || clean === 'undefined') ? null : clean;
+  const c = String(val).trim().replace(/^#+/, '');
+  return (c === '' || c === 'null' || c === 'undefined') ? null : c;
 }
 
 const params = new URLSearchParams(window.location.search);
-
-// FIX 1+3: Use access_secret (non-enumerable) not card_serial
-// access_secret is set once on enrollment and stored locally
-let accessSecret = getClean(params.get('secret'))
+const accessSecret = getClean(params.get('secret'))
   || getClean(localStorage.getItem('loyalty_access_secret'))
   || null;
 
-// Legacy: support ?id= for existing customers during migration
-const legacySerial = getClean(params.get('id'))
+const cardSerial = getClean(params.get('id'))
   || getClean(localStorage.getItem('my_card_serial'))
+  || getClean(localStorage.getItem('loyalty_card_serial'))
   || null;
 
-if (accessSecret) {
-  localStorage.setItem('loyalty_access_secret', accessSecret);
+// Save whatever we found
+if (accessSecret) localStorage.setItem('loyalty_access_secret', accessSecret);
+if (cardSerial)   {
+  localStorage.setItem('my_card_serial', cardSerial);
+  localStorage.setItem('loyalty_card_serial', cardSerial);
 }
 
-// ── SHOW / HIDE ──
+const cacheKey = accessSecret || cardSerial;
+
+// ── UI HELPERS ──
 function showMain() {
   document.getElementById('loading').style.display = 'none';
-  const main = document.getElementById('main');
-  main.style.display = 'flex';
-  main.style.flexDirection = 'column';
-  main.style.alignItems = 'center';
+  const m = document.getElementById('main');
+  m.style.display = 'flex';
+  m.style.flexDirection = 'column';
+  m.style.alignItems = 'center';
 }
 
 function showNotFound() {
@@ -395,78 +353,96 @@ function showNotFound() {
 
 // ── INIT ──
 async function init() {
-  // Regex sweep as fallback
-  if (!cardSerial) {
-    const match = window.location.href.match(/[?&]id=([^&#]+)/);
-    if (match && match[1]) {
-      cardSerial = getCleanSerial(decodeURIComponent(match[1]));
-      if (cardSerial) {
-        localStorage.setItem('my_card_serial', cardSerial);
-        localStorage.setItem('loyalty_card_serial', cardSerial);
+  // Nothing to look up
+  if (!accessSecret && !cardSerial) {
+    // Last resort — regex scrape full href for UUID
+    const m = window.location.href.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
+    if (m && m.length > 0) {
+      // Try each UUID found
+      for (const uuid of m) {
+        localStorage.setItem('my_card_serial', uuid);
+        localStorage.setItem('loyalty_card_serial', uuid);
+        break;
       }
+    } else {
+      showNotFound();
+      return;
     }
   }
 
-  if (!cardSerial) { showNotFound(); return; }
-
-  // Offline — load from cache immediately
-  if (!navigator.onLine) {
-    const cached = localStorage.getItem('cached_customer_' + cardSerial);
+  // Try cache first if offline
+  if (!navigator.onLine && cacheKey) {
+    const cached = localStorage.getItem('cached_customer_' + cacheKey);
     if (cached) {
       try {
         const p = JSON.parse(cached);
         customer = p.customer; merchant = p.merchant;
-        applyBrand();
-        renderCard();
-        showMain();
-        updateOfflineBanner();
+        applyBrand(); renderCard(); showMain(); updateOfflineBanner();
         return;
       } catch(e) {}
     }
   }
 
-  // Online — fetch from Supabase
+  // Fetch from Supabase
   try {
-    // FIX 1: Use RPC with access_secret — no direct table read
-    let rpcResult;
+    let data = null;
+
+    // Try access_secret first (new secure system)
     if (accessSecret) {
-      const { data, error: rpcErr } = await sb.rpc('get_card_by_secret', {
-        p_secret: accessSecret
-      });
-      rpcResult = (rpcErr || !data?.success) ? null : data;
+      const { data: d, error } = await sb.rpc('get_card_by_secret', { p_secret: accessSecret });
+      if (!error && d?.success) data = d;
     }
 
-    // Legacy migration fallback — remove after all customers have access_secret
-    if (!rpcResult && legacySerial) {
-      const { data, error: legErr } = await sb.rpc('get_card_by_secret_legacy', {
-        p_card_serial: legacySerial
-      }).catch(() => ({ data: null }));
-      rpcResult = (data?.success) ? data : null;
+    // Fall back to card_serial (legacy + existing customers)
+    if (!data && cardSerial) {
+      const { data: d, error } = await sb
+        .from('customers')
+        .select('id, name, stamps, lifetime_stamps, card_serial, referral_code, created_at, qr_token, qr_expires_at, merchants(id, name, slug, brand_color, stamp_emoji, total_stamps, reward_label, points_per_visit)')
+        .eq('card_serial', cardSerial)
+        .single();
+
+      if (!error && d) {
+        // Shape into same format as RPC response
+        data = {
+          success: true,
+          ...d,
+          merchant: d.merchants
+        };
+      }
     }
 
-    const c = rpcResult;
-
-    if (!c) {
-      const cacheKey = accessSecret || legacySerial;
-      const cached = cacheKey ? localStorage.getItem('cached_customer_' + cacheKey) : null;
-      if (cached) {
-        try {
-          const p = JSON.parse(cached);
-          customer = p.customer; merchant = p.merchant;
-          applyBrand(); renderCard(); showMain(); return;
-        } catch(e) {}
+    if (!data) {
+      // Try cache as last resort
+      if (cacheKey) {
+        const cached = localStorage.getItem('cached_customer_' + cacheKey);
+        if (cached) {
+          try {
+            const p = JSON.parse(cached);
+            customer = p.customer; merchant = p.merchant;
+            applyBrand(); renderCard(); showMain(); return;
+          } catch(e) {}
+        }
       }
       showNotFound();
       return;
     }
 
-    customer = c;
-    merchant = c.merchants;
+    // Shape data
+    customer = {
+      id:             data.id,
+      name:           data.name,
+      stamps:         data.stamps,
+      lifetime_stamps:data.lifetime_stamps,
+      card_serial:    data.card_serial,
+      referral_code:  data.referral_code,
+      created_at:     data.created_at,
+      qr_token:       data.qr_token,
+      qr_expires_at:  data.qr_expires_at,
+    };
+    merchant = data.merchant || data.merchants;
 
-    // Save to cache for offline
-    localStorage.setItem('cached_customer_' + cardSerial, JSON.stringify({
-      customer: c, merchant: c.merchants
-    }));
+    // Cache for offline
+    localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
 
     applyBrand();
     renderCard();
@@ -476,82 +452,38 @@ async function init() {
 
   } catch(e) {
     // Network error — try cache
-    const cached = localStorage.getItem('cached_customer_' + cardSerial);
-    if (cached) {
-      try {
-        const p = JSON.parse(cached);
-        customer = p.customer; merchant = p.merchant;
-        applyBrand(); renderCard(); showMain(); updateOfflineBanner(); return;
-      } catch(e2) {}
+    if (cacheKey) {
+      const cached = localStorage.getItem('cached_customer_' + cacheKey);
+      if (cached) {
+        try {
+          const p = JSON.parse(cached);
+          customer = p.customer; merchant = p.merchant;
+          applyBrand(); renderCard(); showMain(); updateOfflineBanner(); return;
+        } catch(e2) {}
+      }
     }
     showNotFound();
   }
 }
 
 function applyBrand() {
-  document.title = `${customer.name} — ${merchant.name} Loyalty Card`;
+  if (!customer || !merchant) return;
+  document.title = customer.name + ' — ' + merchant.name + ' Loyalty Card';
   document.documentElement.style.setProperty('--brand', merchant.brand_color);
 }
 
-// ── RENDER CARD ──
-// ── ROTATING QR ──
-let qrRefreshTimer = null;
-
-async function generateRotatingQR(c, m) {
-  // Fetch a fresh token from Supabase
-  try {
-    const secret = localStorage.getItem('loyalty_access_secret');
-    if (!secret) return;
-    const { data, error } = await sb.rpc('refresh_qr_token', {
-      p_access_secret: secret
-    });
-
-    const token = data?.token || c.card_serial; // fallback to serial if RPC fails
-    const qrBox = document.getElementById('qr-box');
-    if (!qrBox) return;
-    qrBox.innerHTML = '';
-
-    new QRCode(qrBox, {
-      text: JSON.stringify({ t: token, m: m.id }),
-      width: 200, height: 200,
-      colorDark: '#0E0E0E',
-      colorLight: '#FFFFFF',
-      correctLevel: QRCode.CorrectLevel.H
-    });
-
-    const serialEl = document.getElementById('serial-text');
-    if (serialEl) serialEl.textContent = 'Refreshes every 5 min • Secure';
-
-    // Auto-refresh every 4 minutes
-    if (qrRefreshTimer) clearTimeout(qrRefreshTimer);
-    qrRefreshTimer = setTimeout(() => generateRotatingQR(c, m), 4 * 60 * 1000);
-
-  } catch(e) {
-    // Fallback to card_serial if token system not set up yet
-    const qrBox = document.getElementById('qr-box');
-    if (!qrBox) return;
-    qrBox.innerHTML = '';
-    new QRCode(qrBox, {
-      text: JSON.stringify({ s: c.card_serial, m: m.id }),
-      width: 200, height: 200,
-      colorDark: '#0E0E0E', colorLight: '#FFFFFF',
-      correctLevel: QRCode.CorrectLevel.H
-    });
-  }
-}
-
+// ── RENDER ──
 function renderCard() {
-  const c = customer;
-  const m = merchant;
+  const c = customer, m = merchant;
+  if (!c || !m) return;
 
-  document.getElementById('c-shop').textContent   = m.name;
-  document.getElementById('c-emoji').textContent  = m.stamp_emoji;
-  document.getElementById('c-name').textContent   = c.name;
-  document.getElementById('c-reward').textContent = m.reward_label;
-  document.getElementById('c-count').textContent  = `${c.stamps} / ${m.total_stamps}`;
+  document.getElementById('c-shop').textContent  = m.name;
+  document.getElementById('c-emoji').textContent = m.stamp_emoji;
+  document.getElementById('c-name').textContent  = c.name;
+  document.getElementById('c-reward').textContent= m.reward_label;
+  document.getElementById('c-count').textContent = c.stamps + ' / ' + m.total_stamps;
   document.getElementById('loyalty-card').style.background = m.brand_color;
 
-  // Stamp dots
   const grid = document.getElementById('c-stamps');
   grid.innerHTML = '';
   for (let i = 0; i < m.total_stamps; i++) {
@@ -561,21 +493,79 @@ function renderCard() {
     grid.appendChild(dot);
   }
 
-  // Reward banner
   const banner = document.getElementById('reward-banner');
   if (c.stamps >= m.total_stamps) {
     banner.style.display = 'flex';
-    document.getElementById('reward-banner-sub').textContent = `You earned: ${m.reward_label}`;
+    document.getElementById('reward-banner-sub').textContent = 'You earned: ' + m.reward_label;
   } else {
     banner.style.display = 'none';
   }
 
-  // QR code — rotating token, refreshes every 4 minutes
-  generateRotatingQR(c, m);
+  generateQR();
+}
+
+// ── QR CODE ──
+function generateQR() {
+  if (qrRefreshTimer) clearTimeout(qrRefreshTimer);
+
+  const token = customer?.qr_token;
+  const mid   = merchant?.id;
+  if (!token || !mid) return;
+
+  const qrBox = document.getElementById('qr-box');
+  if (!qrBox) return;
+  qrBox.innerHTML = '';
+
+  try {
+    new QRCode(qrBox, {
+      text: JSON.stringify({ t: token, m: mid }),
+      width: 200, height: 200,
+      colorDark: '#0E0E0E', colorLight: '#FFFFFF',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  } catch(e) {
+    setTimeout(generateQR, 500);
+    return;
+  }
+
+  // Auto-refresh token every 4 minutes
+  qrRefreshTimer = setTimeout(refreshQRToken, 4 * 60 * 1000);
+}
+
+async function refreshQRToken() {
+  const secret = localStorage.getItem('loyalty_access_secret');
+  const serial = localStorage.getItem('my_card_serial');
+  if (!secret && !serial) return;
+
+  try {
+    let newToken = null;
+
+    if (secret) {
+      const { data } = await sb.rpc('refresh_qr_token', { p_access_secret: secret });
+      if (data?.success) newToken = data.token;
+    }
+
+    // Legacy fallback
+    if (!newToken && serial) {
+      const { data } = await sb.rpc('refresh_qr_token', { p_card_serial: serial }).catch(() => ({ data: null }));
+      if (data?.success) newToken = data.token;
+    }
+
+    if (newToken && customer) {
+      customer.qr_token = newToken;
+      generateQR();
+
+      // Update cache
+      if (cacheKey) {
+        localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
+      }
+    }
+  } catch(e) {}
 }
 
 // ── HISTORY ──
 async function loadHistory() {
+  if (!customer?.id) return;
   const { data } = await sb
     .from('scan_events')
     .select('action, stamps_delta, created_at')
@@ -584,34 +574,36 @@ async function loadHistory() {
     .limit(10);
 
   const list = document.getElementById('history-list');
-  if (!data || data.length === 0) return;
-
+  if (!data || !data.length) return;
   list.innerHTML = '';
   data.forEach(e => {
     const date = new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     const isAdd = e.action === 'add_stamp';
     const item = document.createElement('div');
     item.className = 'history-item';
-    item.innerHTML = `
-      <div class="h-dot ${isAdd ? 'add' : 'redeem'}"></div>
-      <div class="h-label">${isAdd ? `+${e.stamps_delta} stamp` : '🎁 Reward redeemed'}</div>
-      <div class="h-date">${date}</div>`;
+    const dot = document.createElement('div');
+    dot.className = 'h-dot ' + (isAdd ? 'add' : 'redeem');
+    const lbl = document.createElement('div');
+    lbl.className = 'h-label';
+    lbl.textContent = isAdd ? '+' + e.stamps_delta + ' stamp' : '🎁 Reward redeemed';
+    const dt = document.createElement('div');
+    dt.className = 'h-date';
+    dt.textContent = date;
+    item.appendChild(dot); item.appendChild(lbl); item.appendChild(dt);
     list.appendChild(item);
   });
 }
 
 // ── REALTIME ──
 function subscribeToUpdates() {
+  if (!customer?.id) return;
   sb.channel('customer-' + customer.id)
     .on('postgres_changes', {
       event: 'UPDATE', schema: 'public', table: 'customers',
-      filter: `id=eq.${customer.id}`
+      filter: 'id=eq.' + customer.id
     }, payload => {
       customer = { ...customer, ...payload.new };
-      // Update cache
-      localStorage.setItem('cached_customer_' + cardSerial, JSON.stringify({
-        customer: customer, merchant: merchant
-      }));
+      if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
       renderCard();
       loadHistory();
       const card = document.getElementById('loyalty-card');
@@ -621,12 +613,11 @@ function subscribeToUpdates() {
     .subscribe();
 }
 
-// ── OFFLINE BANNER ──
+// ── OFFLINE ──
 function updateOfflineBanner() {
   const banner = document.getElementById('offline-banner');
   const dot    = document.getElementById('conn-dot');
   const text   = document.getElementById('offline-text');
-
   if (!navigator.onLine) {
     dot.className = 'conn-dot red';
     text.textContent = "You're offline — showing your last saved card";
@@ -636,16 +627,7 @@ function updateOfflineBanner() {
     text.textContent = 'Back online — syncing...';
     banner.classList.add('show');
     setTimeout(() => banner.classList.remove('show'), 2500);
-    if (customer) {
-      sb.from('customers').select('*, merchants(*)').eq('card_serial', cardSerial).single()
-        .then(({ data: c }) => {
-          if (c) {
-            customer = c; merchant = c.merchants;
-            localStorage.setItem('cached_customer_' + cardSerial, JSON.stringify({ customer: c, merchant: c.merchants }));
-            renderCard();
-          }
-        });
-    }
+    init(); // re-fetch fresh data
   }
 }
 
@@ -654,25 +636,24 @@ window.addEventListener('offline', updateOfflineBanner);
 
 // ── SHARE ──
 function sendWhatsApp() {
-  const cardUrl = window.location.href;
-  const msg = encodeURIComponent('🎉 My loyalty card for ' + (merchant ? merchant.name : 'the shop') + ':\n\n' + cardUrl + '\n\nTap the link to check my stamps!');
+  const url = window.location.href;
+  const msg = encodeURIComponent('🎉 My loyalty card for ' + (merchant ? merchant.name : 'the shop') + ':\n\n' + url + '\n\nTap the link to check my stamps!');
   window.open('https://wa.me/?text=' + msg, '_blank');
 }
 
 function shareReferral() {
+  if (!merchant || !customer) return;
   const base = window.location.href.split('card.html')[0] + '02_enrollment.html';
-  const link = `${base}?merchant=${merchant.slug}&ref=${customer.referral_code}`;
+  const link = base + '?merchant=' + merchant.slug + '&ref=' + customer.referral_code;
   if (navigator.share) {
-    navigator.share({ title: `Join ${merchant.name}`, text: 'Get a loyalty card and earn rewards!', url: link });
+    navigator.share({ title: 'Join ' + merchant.name, url: link });
   } else {
     navigator.clipboard.writeText(link).then(() => alert('Referral link copied!'));
   }
 }
 
 // ── iOS HOME SCREEN HINT ──
-const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-if (isIOS && !isStandalone) {
+if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !window.matchMedia('(display-mode: standalone)').matches) {
   document.getElementById('ios-hint').style.display = 'block';
 }
 
