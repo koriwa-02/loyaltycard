@@ -427,7 +427,7 @@ async function init() {
   try {
     const { data: c, error } = await sb
       .from('customers')
-      .select('*, merchants(*)')
+      .select('id, name, stamps, lifetime_stamps, card_serial, referral_code, created_at, merchants(id, name, slug, brand_color, stamp_emoji, total_stamps, reward_label, points_per_visit)')
       .eq('card_serial', cardSerial)
       .single();
 
