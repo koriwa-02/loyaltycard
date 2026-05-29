@@ -594,18 +594,18 @@
       </div>
     </div>
 
-    <button class="submit-btn" id="submit-btn" onclick="submitForm()">
-      <span id="btn-text">Get my loyalty card</span>
-    </button>
-
-    <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 0;">
-      <input type="checkbox" id="consent-check" style="margin-top:3px;width:16px;height:16px;accent-color:var(--brand);flex-shrink:0;" required>
-      <label for="consent-check" style="font-size:12px;color:var(--ink-muted);line-height:1.6;cursor:pointer;">
-        I agree to share my name and phone number with this shop for loyalty rewards. 
-        My data will never be sold or shared with third parties. 
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 0 16px;">
+      <input type="checkbox" id="consent-check" style="margin-top:3px;width:18px;height:18px;accent-color:var(--brand);flex-shrink:0;cursor:pointer;" required>
+      <label for="consent-check" style="font-size:12px;color:var(--ink-muted);line-height:1.6;cursor:pointer;user-select:none;">
+        I agree to share my name and phone number with this shop for loyalty rewards.
+        My data will never be sold or shared with third parties.
         I can request deletion anytime by contacting the shop.
       </label>
     </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitForm()">
+      <span id="btn-text">Get my loyalty card</span>
+    </button>
   </div>
 </div>
 
@@ -966,3 +966,4 @@ init();
 </div>
 </body>
 </html>
+
