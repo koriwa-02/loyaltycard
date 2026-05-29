@@ -501,16 +501,17 @@ function renderCard() {
     banner.style.display = 'none';
   }
 
-  generateQR();
+  // Always refresh token when card renders — ensures QR is never expired
+  refreshQRToken();
 }
 
 // ── QR CODE ──
-function generateQR() {
+function generateQR(token) {
   if (qrRefreshTimer) clearTimeout(qrRefreshTimer);
 
-  const token = customer?.qr_token;
-  const mid   = merchant?.id;
-  if (!token || !mid) return;
+  const useToken = token || customer?.qr_token;
+  const mid      = merchant?.id;
+  if (!useToken || !mid) return;
 
   const qrBox = document.getElementById('qr-box');
   if (!qrBox) return;
@@ -518,49 +519,54 @@ function generateQR() {
 
   try {
     new QRCode(qrBox, {
-      text: JSON.stringify({ t: token, m: mid }),
+      text: JSON.stringify({ t: useToken, m: mid }),
       width: 200, height: 200,
       colorDark: '#0E0E0E', colorLight: '#FFFFFF',
       correctLevel: QRCode.CorrectLevel.H
     });
   } catch(e) {
-    setTimeout(generateQR, 500);
+    setTimeout(() => generateQR(useToken), 500);
     return;
   }
 
-  // Auto-refresh token every 4 minutes
+  // Auto-refresh every 4 minutes
   qrRefreshTimer = setTimeout(refreshQRToken, 4 * 60 * 1000);
 }
 
 async function refreshQRToken() {
-  const secret = localStorage.getItem('loyalty_access_secret');
-  const serial = localStorage.getItem('my_card_serial');
-  if (!secret && !serial) return;
+  const serial = customer?.card_serial || localStorage.getItem('my_card_serial');
+  if (!serial) { generateQR(customer?.qr_token); return; }
+
+  if (!navigator.onLine) {
+    generateQR(customer?.qr_token);
+    return;
+  }
 
   try {
-    let newToken = null;
+    // Generate new token and update DB directly
+    const newToken = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
 
-    if (secret) {
-      const { data } = await sb.rpc('refresh_qr_token', { p_access_secret: secret });
-      if (data?.success) newToken = data.token;
-    }
+    const { error } = await sb
+      .from('customers')
+      .update({
+        qr_token: newToken,
+        qr_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
+      })
+      .eq('card_serial', serial);
 
-    // Legacy fallback
-    if (!newToken && serial) {
-      const { data } = await sb.rpc('refresh_qr_token', { p_card_serial: serial }).catch(() => ({ data: null }));
-      if (data?.success) newToken = data.token;
-    }
-
-    if (newToken && customer) {
-      customer.qr_token = newToken;
-      generateQR();
-
-      // Update cache
+    if (!error) {
+      if (customer) customer.qr_token = newToken;
+      generateQR(newToken);
       if (cacheKey) {
         localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
       }
+    } else {
+      generateQR(customer?.qr_token);
     }
-  } catch(e) {}
+  } catch(e) {
+    generateQR(customer?.qr_token);
+  }
 }
 
 // ── HISTORY ──
