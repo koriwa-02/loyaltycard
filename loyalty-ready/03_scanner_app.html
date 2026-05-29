@@ -721,6 +721,24 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 // ─────────────────────────────────────────────
 let merchant = null;
 let cashier  = null;
+
+// FIX 6: Safe text setter — prevents XSS from DB strings
+function safeText(el, text) {
+  if (typeof el === 'string') el = document.getElementById(el);
+  if (el) el.textContent = String(text || '');
+}
+
+function safeHTML(parent, tag, attrs, text) {
+  const el = document.createElement(tag);
+  Object.entries(attrs || {}).forEach(([k,v]) => {
+    if (k === 'class') el.className = v;
+    else if (k === 'style') el.style.cssText = v;
+    else el.setAttribute(k, v);
+  });
+  if (text !== undefined) el.textContent = String(text);
+  parent.appendChild(el);
+  return el;
+}
 let currentCustomer = null;
 let scanner  = null;
 let scanLocked = false;  // prevents double-scan
@@ -859,10 +877,15 @@ async function onQRScanned(rawQR) {
     return;
   }
 
-  // Support both token-based (t) and legacy serial-based (s) QR codes
+  // FIX 4: Accept ONLY rotating token QR — reject legacy static serial
   const token      = parsed.t || null;
-  const cardSerial = parsed.s || null;
   const scannedMerchantId = parsed.m;
+
+  if (!token) {
+    toast('Old QR code — ask customer to refresh their card', 'error');
+    setTimeout(() => scanLocked = false, 2000);
+    return;
+  }
 
   if (scannedMerchantId !== merchant.id) {
     toast('Card from a different shop', 'error');
@@ -873,38 +896,20 @@ async function onQRScanned(rawQR) {
   try {
     let customer;
 
-    if (token) {
-      // New secure token-based lookup — just show customer, don't stamp yet
-      const { data, error } = await sb
-        .from('customers')
-        .select('id, name, stamps, lifetime_stamps, created_at, card_serial, qr_token, qr_expires_at')
-        .eq('qr_token', token)
-        .eq('merchant_id', merchant.id)
-        .single();
+    // Token-only secure lookup via RPC
+    const { data: lookupData, error: lookupErr } = await sb.rpc('get_customer_by_qr_token', {
+      p_token:      token,
+      p_merchant_id: merchant.id
+    });
 
-      if (error || !data) {
-        toast('QR expired or invalid — ask customer to refresh', 'error');
-        setTimeout(() => scanLocked = false, 2000);
-        return;
-      }
-      customer = data;
-      customer._token = token; // store token for stamp action
-    } else {
-      // Legacy fallback — serial based
-      const { data, error } = await sb
-        .from('customers')
-        .select('id, name, stamps, lifetime_stamps, created_at, card_serial, qr_token, qr_expires_at')
-        .eq('card_serial', cardSerial)
-        .eq('merchant_id', merchant.id)
-        .single();
-
-      if (error || !data) {
-        toast('Customer not found', 'error');
-        setTimeout(() => scanLocked = false, 2000);
-        return;
-      }
-      customer = data;
+    if (lookupErr || !lookupData?.success) {
+      toast(lookupData?.error || 'QR expired — ask customer to refresh', 'error');
+      setTimeout(() => scanLocked = false, 2000);
+      return;
     }
+
+    customer = lookupData;
+    customer._token = token;
 
     currentCustomer = customer;
     renderCustomer(customer);
@@ -981,19 +986,24 @@ async function doAddStamp() {
   try {
     // Use token-based stamp if available, fallback to ID-based
     let data, error;
-    if (currentCustomer._token) {
-      ({ data, error } = await sb.rpc('add_stamp_by_token', {
-        p_token:       currentCustomer._token,
-        p_cashier_id:  cashier?.id || null,
-        p_merchant_id: merchant.id
-      }));
-    } else {
-      ({ data, error } = await sb.rpc('add_stamp', {
-        p_customer_id: currentCustomer.id,
-        p_cashier_id:  cashier?.id || null,
-        p_merchant_id: merchant.id
-      }));
+    // FIX 2+4: Use server-issued cashier session, token-only QR
+    if (!cashier?.sessionToken) {
+      toast('No cashier session — please log in again', 'error');
+      btn.disabled = false;
+      btn.querySelector('.action-btn-icon').innerHTML = '+';
+      return;
     }
+    if (!currentCustomer._token) {
+      toast('Invalid QR — ask customer to refresh card', 'error');
+      btn.disabled = false;
+      btn.querySelector('.action-btn-icon').innerHTML = '+';
+      return;
+    }
+    ({ data, error } = await sb.rpc('add_stamp_by_token', {
+      p_qr_token:        currentCustomer._token,
+      p_cashier_session: cashier.sessionToken,
+      p_merchant_id:     merchant.id
+    }));
 
     if (error) throw error;
 
@@ -1049,19 +1059,18 @@ async function doRedeem() {
 
   try {
     let error;
-    if (currentCustomer._token) {
-      ({ error } = await sb.rpc('redeem_reward_by_token', {
-        p_token:       currentCustomer._token,
-        p_cashier_id:  cashier?.id || null,
-        p_merchant_id: merchant.id
-      }));
-    } else {
-      ({ error } = await sb.rpc('redeem_reward', {
-        p_customer_id: currentCustomer.id,
-        p_cashier_id:  cashier?.id || null,
-        p_merchant_id: merchant.id
-      }));
+    // FIX 2+4: Session token + rotating QR only
+    if (!cashier?.sessionToken || !currentCustomer._token) {
+      toast('Session invalid — log in again', 'error');
+      btn.disabled = false;
+      btn.querySelector('.action-btn-icon').innerHTML = '🎁';
+      return;
     }
+    ({ error } = await sb.rpc('redeem_reward_by_token', {
+      p_qr_token:        currentCustomer._token,
+      p_cashier_session: cashier.sessionToken,
+      p_merchant_id:     merchant.id
+    }));
 
     if (error) throw error;
 
