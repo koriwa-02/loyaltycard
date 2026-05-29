@@ -534,31 +534,35 @@ function generateQR(token) {
 }
 
 async function refreshQRToken() {
-  const serial = customer?.card_serial || localStorage.getItem('my_card_serial');
-  if (!serial) { generateQR(customer?.qr_token); return; }
+  const secret = accessSecret || localStorage.getItem('loyalty_access_secret');
 
-  // Mint new token immediately — no expiry check, always fresh
-  const newToken = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
-  const newExpiry = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  if (!navigator.onLine || !secret) {
+    // Offline or no secret — just show whatever token we have
+    generateQR(customer?.qr_token);
+    return;
+  }
 
-  // Render instantly — don't wait for DB
-  if (customer) { customer.qr_token = newToken; customer.qr_expires_at = newExpiry; }
-  generateQR(newToken);
-
-  if (!navigator.onLine) return;
-
-  // Persist to DB in background
   try {
-    const { error } = await sb
-      .from('customers')
-      .update({ qr_token: newToken, qr_expires_at: newExpiry })
-      .eq('card_serial', serial);
+    // Use SECURITY DEFINER RPC — bypasses RLS, anon-safe
+    const { data, error } = await sb.rpc('refresh_qr_token', { p_access_secret: secret });
 
-    if (!error && cacheKey) {
-      localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
+    if (!error && data?.success) {
+      const newToken  = data.token;
+      const newExpiry = data.expires_at;
+      if (customer) { customer.qr_token = newToken; customer.qr_expires_at = newExpiry; }
+      generateQR(newToken);
+      if (cacheKey) {
+        localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
+      }
+    } else {
+      // RPC failed — render existing token and retry in 30s
+      generateQR(customer?.qr_token);
+      if (qrRefreshTimer) clearTimeout(qrRefreshTimer);
+      qrRefreshTimer = setTimeout(refreshQRToken, 30 * 1000);
     }
-  } catch(e) { /* silent — QR already rendered */ }
+  } catch(e) {
+    generateQR(customer?.qr_token);
+  }
 }
 
 // Refresh QR whenever the tab becomes visible again (user returns from background)
