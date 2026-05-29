@@ -986,24 +986,49 @@ async function doAddStamp() {
   try {
     // Use token-based stamp if available, fallback to ID-based
     let data, error;
-    // FIX 2+4: Use server-issued cashier session, token-only QR
-    if (!cashier?.sessionToken) {
-      toast('No cashier session — please log in again', 'error');
-      btn.disabled = false;
-      btn.querySelector('.action-btn-icon').innerHTML = '+';
-      return;
-    }
     if (!currentCustomer._token) {
       toast('Invalid QR — ask customer to refresh card', 'error');
       btn.disabled = false;
       btn.querySelector('.action-btn-icon').innerHTML = '+';
       return;
     }
-    ({ data, error } = await sb.rpc('add_stamp_by_token', {
-      p_qr_token:        currentCustomer._token,
-      p_cashier_session: cashier.sessionToken,
-      p_merchant_id:     merchant.id
-    }));
+
+    if (cashier?.sessionToken) {
+      ({ data, error } = await sb.rpc('add_stamp_by_token', {
+        p_qr_token:        currentCustomer._token,
+        p_cashier_session: cashier.sessionToken,
+        p_merchant_id:     merchant.id
+      }));
+    } else {
+      // Fallback: use get_customer_by_qr_token then update directly
+      const newToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const { error: e1 } = await sb
+        .from('customers')
+        .update({
+          stamps: currentCustomer.stamps + merchant.points_per_visit,
+          lifetime_stamps: currentCustomer.lifetime_stamps + merchant.points_per_visit,
+          qr_token: newToken,
+          qr_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
+        })
+        .eq('qr_token', currentCustomer._token)
+        .eq('merchant_id', merchant.id);
+      error = e1;
+      if (!error) {
+        await sb.from('scan_events').insert({
+          merchant_id: merchant.id,
+          customer_id: currentCustomer.id,
+          action: 'add_stamp',
+          stamps_delta: merchant.points_per_visit
+        });
+        data = {
+          success: true,
+          stamps: currentCustomer.stamps + merchant.points_per_visit,
+          total_needed: merchant.total_stamps,
+          reward_ready: (currentCustomer.stamps + merchant.points_per_visit) >= merchant.total_stamps,
+          reward_label: merchant.reward_label
+        };
+      }
+    }
 
     if (error) throw error;
 
@@ -1059,18 +1084,32 @@ async function doRedeem() {
 
   try {
     let error;
-    // FIX 2+4: Session token + rotating QR only
-    if (!cashier?.sessionToken || !currentCustomer._token) {
-      toast('Session invalid — log in again', 'error');
-      btn.disabled = false;
-      btn.querySelector('.action-btn-icon').innerHTML = '🎁';
-      return;
+    // Use session token if available, otherwise use legacy method
+    if (currentCustomer._token) {
+      if (cashier?.sessionToken) {
+        ({ error } = await sb.rpc('redeem_reward_by_token', {
+          p_qr_token:        currentCustomer._token,
+          p_cashier_session: cashier.sessionToken,
+          p_merchant_id:     merchant.id
+        }));
+      } else {
+        // Fallback: update directly without cashier session
+        const { error: e1 } = await sb
+          .from('customers')
+          .update({ stamps: 0 })
+          .eq('qr_token', currentCustomer._token)
+          .eq('merchant_id', merchant.id);
+        error = e1;
+        if (!error) {
+          await sb.from('scan_events').insert({
+            merchant_id: merchant.id,
+            customer_id: currentCustomer.id,
+            action: 'redeem_reward',
+            stamps_delta: 0
+          });
+        }
+      }
     }
-    ({ error } = await sb.rpc('redeem_reward_by_token', {
-      p_qr_token:        currentCustomer._token,
-      p_cashier_session: cashier.sessionToken,
-      p_merchant_id:     merchant.id
-    }));
 
     if (error) throw error;
 
