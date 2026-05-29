@@ -859,7 +859,10 @@ async function onQRScanned(rawQR) {
     return;
   }
 
-  const { s: cardSerial, m: scannedMerchantId } = parsed;
+  // Support both token-based (t) and legacy serial-based (s) QR codes
+  const token      = parsed.t || null;
+  const cardSerial = parsed.s || null;
+  const scannedMerchantId = parsed.m;
 
   if (scannedMerchantId !== merchant.id) {
     toast('Card from a different shop', 'error');
@@ -868,24 +871,44 @@ async function onQRScanned(rawQR) {
   }
 
   try {
-    const { data: customer, error } = await sb
-      .from('customers')
-      .select('*')
-      .eq('card_serial', cardSerial)
-      .eq('merchant_id', merchant.id)
-      .single();
+    let customer;
 
-    if (error || !customer) {
-      toast('Customer not found', 'error');
-      setTimeout(() => scanLocked = false, 2000);
-      return;
+    if (token) {
+      // New secure token-based lookup — just show customer, don't stamp yet
+      const { data, error } = await sb
+        .from('customers')
+        .select('*')
+        .eq('qr_token', token)
+        .eq('merchant_id', merchant.id)
+        .single();
+
+      if (error || !data) {
+        toast('QR expired or invalid — ask customer to refresh', 'error');
+        setTimeout(() => scanLocked = false, 2000);
+        return;
+      }
+      customer = data;
+      customer._token = token; // store token for stamp action
+    } else {
+      // Legacy fallback — serial based
+      const { data, error } = await sb
+        .from('customers')
+        .select('*')
+        .eq('card_serial', cardSerial)
+        .eq('merchant_id', merchant.id)
+        .single();
+
+      if (error || !data) {
+        toast('Customer not found', 'error');
+        setTimeout(() => scanLocked = false, 2000);
+        return;
+      }
+      customer = data;
     }
 
     currentCustomer = customer;
     renderCustomer(customer);
-    toast(`Found: ${customer.name}`, 'success');
-
-    // Vibrate on mobile
+    toast('Found: ' + customer.name, 'success');
     if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
 
   } catch(e) {
@@ -956,11 +979,21 @@ async function doAddStamp() {
   btn.querySelector('.action-btn-icon').innerHTML = '<div class="spinner" style="width:16px;height:16px"></div>';
 
   try {
-    const { data, error } = await sb.rpc('add_stamp', {
-      p_customer_id: currentCustomer.id,
-      p_cashier_id:  cashier?.id || null,
-      p_merchant_id: merchant.id
-    });
+    // Use token-based stamp if available, fallback to ID-based
+    let data, error;
+    if (currentCustomer._token) {
+      ({ data, error } = await sb.rpc('add_stamp_by_token', {
+        p_token:       currentCustomer._token,
+        p_cashier_id:  cashier?.id || null,
+        p_merchant_id: merchant.id
+      }));
+    } else {
+      ({ data, error } = await sb.rpc('add_stamp', {
+        p_customer_id: currentCustomer.id,
+        p_cashier_id:  cashier?.id || null,
+        p_merchant_id: merchant.id
+      }));
+    }
 
     if (error) throw error;
 
@@ -1015,11 +1048,20 @@ async function doRedeem() {
   btn.querySelector('.action-btn-icon').innerHTML = '<div class="spinner" style="width:16px;height:16px"></div>';
 
   try {
-    const { error } = await sb.rpc('redeem_reward', {
-      p_customer_id: currentCustomer.id,
-      p_cashier_id:  cashier?.id || null,
-      p_merchant_id: merchant.id
-    });
+    let error;
+    if (currentCustomer._token) {
+      ({ error } = await sb.rpc('redeem_reward_by_token', {
+        p_token:       currentCustomer._token,
+        p_cashier_id:  cashier?.id || null,
+        p_merchant_id: merchant.id
+      }));
+    } else {
+      ({ error } = await sb.rpc('redeem_reward', {
+        p_customer_id: currentCustomer.id,
+        p_cashier_id:  cashier?.id || null,
+        p_merchant_id: merchant.id
+      }));
+    }
 
     if (error) throw error;
 
