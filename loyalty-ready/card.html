@@ -356,25 +356,27 @@ let merchant = null;
 let qrGenerated = false;
 
 // ── SERIAL DETECTION ──
-function getCleanSerial(val) {
+function getClean(val) {
   if (!val) return null;
   const clean = String(val).trim().replace(/^#+/, '');
   return (clean === '' || clean === 'null' || clean === 'undefined') ? null : clean;
 }
 
-const params      = new URLSearchParams(window.location.search);
-const hashSerial  = getCleanSerial(window.location.hash);
-const querySerial = getCleanSerial(params.get('id'));
+const params = new URLSearchParams(window.location.search);
 
-let cardSerial = hashSerial
-  || querySerial
-  || getCleanSerial(localStorage.getItem('my_card_serial'))
-  || getCleanSerial(localStorage.getItem('loyalty_card_serial'))
+// FIX 1+3: Use access_secret (non-enumerable) not card_serial
+// access_secret is set once on enrollment and stored locally
+let accessSecret = getClean(params.get('secret'))
+  || getClean(localStorage.getItem('loyalty_access_secret'))
   || null;
 
-if (cardSerial) {
-  localStorage.setItem('my_card_serial', cardSerial);
-  localStorage.setItem('loyalty_card_serial', cardSerial);
+// Legacy: support ?id= for existing customers during migration
+const legacySerial = getClean(params.get('id'))
+  || getClean(localStorage.getItem('my_card_serial'))
+  || null;
+
+if (accessSecret) {
+  localStorage.setItem('loyalty_access_secret', accessSecret);
 }
 
 // ── SHOW / HIDE ──
@@ -425,15 +427,28 @@ async function init() {
 
   // Online — fetch from Supabase
   try {
-    const { data: c, error } = await sb
-      .from('customers')
-      .select('id, name, stamps, lifetime_stamps, card_serial, referral_code, created_at, merchants(id, name, slug, brand_color, stamp_emoji, total_stamps, reward_label, points_per_visit)')
-      .eq('card_serial', cardSerial)
-      .single();
+    // FIX 1: Use RPC with access_secret — no direct table read
+    let rpcResult;
+    if (accessSecret) {
+      const { data, error: rpcErr } = await sb.rpc('get_card_by_secret', {
+        p_secret: accessSecret
+      });
+      rpcResult = (rpcErr || !data?.success) ? null : data;
+    }
 
-    if (error || !c) {
-      // Try cache as fallback
-      const cached = localStorage.getItem('cached_customer_' + cardSerial);
+    // Legacy migration fallback — remove after all customers have access_secret
+    if (!rpcResult && legacySerial) {
+      const { data, error: legErr } = await sb.rpc('get_card_by_secret_legacy', {
+        p_card_serial: legacySerial
+      }).catch(() => ({ data: null }));
+      rpcResult = (data?.success) ? data : null;
+    }
+
+    const c = rpcResult;
+
+    if (!c) {
+      const cacheKey = accessSecret || legacySerial;
+      const cached = cacheKey ? localStorage.getItem('cached_customer_' + cacheKey) : null;
       if (cached) {
         try {
           const p = JSON.parse(cached);
@@ -485,8 +500,10 @@ let qrRefreshTimer = null;
 async function generateRotatingQR(c, m) {
   // Fetch a fresh token from Supabase
   try {
+    const secret = localStorage.getItem('loyalty_access_secret');
+    if (!secret) return;
     const { data, error } = await sb.rpc('refresh_qr_token', {
-      p_card_serial: c.card_serial
+      p_access_secret: secret
     });
 
     const token = data?.token || c.card_serial; // fallback to serial if RPC fails
