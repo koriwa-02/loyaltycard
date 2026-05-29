@@ -598,7 +598,14 @@
       <span id="btn-text">Get my loyalty card</span>
     </button>
 
-    <p class="legal">By joining you agree to receive loyalty updates from this shop. No spam, ever.</p>
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 0;">
+      <input type="checkbox" id="consent-check" style="margin-top:3px;width:16px;height:16px;accent-color:var(--brand);flex-shrink:0;" required>
+      <label for="consent-check" style="font-size:12px;color:var(--ink-muted);line-height:1.6;cursor:pointer;">
+        I agree to share my name and phone number with this shop for loyalty rewards. 
+        My data will never be sold or shared with third parties. 
+        I can request deletion anytime by contacting the shop.
+      </label>
+    </div>
   </div>
 </div>
 
@@ -738,6 +745,8 @@ async function submitForm() {
   errEl.style.display = 'none';
 
   if (!name) { showError('Please enter your name.'); return; }
+  const consent = document.getElementById('consent-check');
+  if (consent && !consent.checked) { showError('Please accept the privacy terms to continue.'); return; }
   if (!phone && !email) { showError('Please enter a phone number or email.'); return; }
 
   // Loading state
