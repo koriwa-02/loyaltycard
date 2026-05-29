@@ -745,6 +745,50 @@ let scanLocked = false;  // prevents double-scan
 let sessionStats = { scans: 0, rewards: 0, customers: new Set() };
 
 // ─────────────────────────────────────────────
+// NETWORK RESILIENCE — Retry Queue
+// ─────────────────────────────────────────────
+const RETRY_QUEUE_KEY = 'koriwa_stamp_retry_queue';
+function loadRetryQueue() { try { return JSON.parse(localStorage.getItem(RETRY_QUEUE_KEY) || '[]'); } catch { return []; } }
+function saveRetryQueue(q) { try { localStorage.setItem(RETRY_QUEUE_KEY, JSON.stringify(q)); } catch {} }
+function enqueueStamp(payload) {
+  const q = loadRetryQueue();
+  q.push({ ...payload, queuedAt: Date.now(), attempts: 0 });
+  saveRetryQueue(q);
+  toast('Offline — stamp saved, will sync when connected', 'error');
+}
+async function drainRetryQueue() {
+  if (!navigator.onLine || !merchant) return;
+  const q = loadRetryQueue();
+  if (!q.length) return;
+  const remaining = [];
+  for (const item of q) {
+    if (Date.now() - item.queuedAt > 10 * 60 * 1000) continue; // 10min max
+    try {
+      if (item.sessionToken) {
+        const { data, error } = await sb.rpc('add_stamp_by_token', {
+          p_qr_token: item.qr_token, p_cashier_session: item.sessionToken, p_merchant_id: item.merchant_id
+        });
+        if (!error && data?.success) { toast('Synced: ' + item.customer_name, 'success'); continue; }
+      }
+      remaining.push({ ...item, attempts: (item.attempts || 0) + 1 });
+    } catch { remaining.push({ ...item, attempts: (item.attempts || 0) + 1 }); }
+  }
+  saveRetryQueue(remaining.filter(i => i.attempts < 3));
+}
+window.addEventListener('online', drainRetryQueue);
+window.addEventListener('load', () => setTimeout(drainRetryQueue, 2000));
+
+// Retry wrapper — retries once after 1.5s on network blip
+async function resilientRPC(fn) {
+  try { return await fn(); }
+  catch (e) {
+    if (!navigator.onLine) throw e;
+    await new Promise(r => setTimeout(r, 1500));
+    return await fn();
+  }
+}
+
+// ─────────────────────────────────────────────
 // LOGIN
 // ─────────────────────────────────────────────
 async function doLogin() {
@@ -994,11 +1038,25 @@ async function doAddStamp() {
     }
 
     if (cashier?.sessionToken) {
-      ({ data, error } = await sb.rpc('add_stamp_by_token', {
-        p_qr_token:        currentCustomer._token,
-        p_cashier_session: cashier.sessionToken,
-        p_merchant_id:     merchant.id
-      }));
+      try {
+        ({ data, error } = await resilientRPC(() => sb.rpc('add_stamp_by_token', {
+          p_qr_token:        currentCustomer._token,
+          p_cashier_session: cashier.sessionToken,
+          p_merchant_id:     merchant.id
+        })));
+      } catch (netErr) {
+        // Network totally down — queue for retry
+        enqueueStamp({
+          qr_token:      currentCustomer._token,
+          sessionToken:  cashier.sessionToken,
+          merchant_id:   merchant.id,
+          customer_name: currentCustomer.name
+        });
+        btn.disabled = false;
+        btn.querySelector('.action-btn-icon').innerHTML = '+';
+        scanLocked = false;
+        return;
+      }
     } else {
       // Fallback: use get_customer_by_qr_token then update directly
       const newToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -1251,3 +1309,4 @@ if (saved) {
 </script>
 </body>
 </html>
+
