@@ -818,7 +818,10 @@ async function submitForm() {
     }));
 
     // Open WhatsApp with card link so customer can save it to themselves
-    const cardLink = window.location.origin + window.location.pathname.replace('02_enrollment.html', 'card.html') + '?secret=' + customer.access_secret;
+    const _secret = customer.access_secret || null;
+    const _serial = customer.card_serial || null;
+    const _cardParam = _secret ? ('?secret=' + _secret) : (_serial ? ('?id=' + _serial) : '');
+    const cardLink = window.location.origin + window.location.pathname.replace('02_enrollment.html', 'card.html') + _cardParam;
     const waMsg = encodeURIComponent('🎉 Your loyalty card for ' + merchant.name + ' is ready!\n\nTap this link anytime to check your stamps:\n' + cardLink + '\n\nSave this message so you never lose it!');
     const waUrl = 'https://wa.me/?text=' + waMsg;
     
@@ -848,8 +851,9 @@ function showError(msg) {
 function showSuccess() {
   // Build card URL
   const base = window.location.href.split('?')[0].replace('02_enrollment.html', 'card.html');
-  // FIX 1: Use access_secret in URL, not card_serial
-  const cardUrl = base + '?secret=' + newCustomer.access_secret;
+  const _s = newCustomer.access_secret || null;
+  const _id = newCustomer.card_serial || null;
+  const cardUrl = base + (_s ? ('?secret=' + _s) : (_id ? ('?id=' + _id) : ''));
   const waMsg = encodeURIComponent('🎉 Your loyalty card for ' + merchant.name + ' is ready!\n\nTap this link anytime to check your stamps:\n' + cardUrl + '\n\nSave this message — it is your loyalty card!');
   const waUrl = 'https://wa.me/?text=' + waMsg;
 
