@@ -537,49 +537,28 @@ async function refreshQRToken() {
   const serial = customer?.card_serial || localStorage.getItem('my_card_serial');
   if (!serial) { generateQR(customer?.qr_token); return; }
 
-  if (!navigator.onLine) {
-    generateQR(customer?.qr_token);
-    return;
-  }
+  // Mint new token immediately — no expiry check, always fresh
+  const newToken = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+  const newExpiry = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
-  // Check if current token is still valid (more than 30s remaining)
-  const expiresAt = customer?.qr_expires_at ? new Date(customer.qr_expires_at).getTime() : 0;
-  const secondsLeft = (expiresAt - Date.now()) / 1000;
-  if (secondsLeft > 30) {
-    // Token still fresh — just render it and schedule next refresh
-    generateQR(customer.qr_token);
-    return;
-  }
+  // Render instantly — don't wait for DB
+  if (customer) { customer.qr_token = newToken; customer.qr_expires_at = newExpiry; }
+  generateQR(newToken);
 
+  if (!navigator.onLine) return;
+
+  // Persist to DB in background
   try {
-    // Generate new token and update DB
-    const newToken = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
-    const newExpiry = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-
     const { error } = await sb
       .from('customers')
-      .update({
-        qr_token: newToken,
-        qr_expires_at: newExpiry
-      })
+      .update({ qr_token: newToken, qr_expires_at: newExpiry })
       .eq('card_serial', serial);
 
-    if (!error) {
-      if (customer) {
-        customer.qr_token = newToken;
-        customer.qr_expires_at = newExpiry;
-      }
-      generateQR(newToken);
-      if (cacheKey) {
-        localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
-      }
-    } else {
-      generateQR(customer?.qr_token);
+    if (!error && cacheKey) {
+      localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
     }
-  } catch(e) {
-    generateQR(customer?.qr_token);
-  }
+  } catch(e) { /* silent — QR already rendered */ }
 }
 
 // Refresh QR whenever the tab becomes visible again (user returns from background)
