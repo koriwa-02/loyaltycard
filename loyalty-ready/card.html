@@ -507,6 +507,7 @@ function renderCard() {
 }
 
 // ── QR CODE ──
+let _qrRetryCount = 0;
 function generateQR(token) {
   const useToken = token || customer?.qr_token;
   const mid      = merchant?.id;
@@ -523,8 +524,13 @@ function generateQR(token) {
       colorDark: '#0E0E0E', colorLight: '#FFFFFF',
       correctLevel: QRCode.CorrectLevel.H
     });
+    _qrRetryCount = 0; // success — reset
   } catch(e) {
-    setTimeout(() => generateQR(useToken), 500);
+    if (_qrRetryCount < 2) {
+      _qrRetryCount++;
+      setTimeout(() => generateQR(useToken), 500);
+    }
+    // else: give up silently — loop will retry in <90s anyway
   }
 }
 
