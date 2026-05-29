@@ -1140,32 +1140,45 @@ async function doRedeem() {
   btn.disabled = true;
   btn.querySelector('.action-btn-icon').innerHTML = '<div class="spinner" style="width:16px;height:16px"></div>';
 
+  // Use customer_id — not qr_token — so token rotation after stamp doesn't break redeem
+  const customerId = currentCustomer.id;
+  if (!customerId) {
+    toast('Error: no customer ID — re-scan the card', 'error');
+    btn.disabled = false;
+    btn.querySelector('.action-btn-icon').innerHTML = '🎁';
+    return;
+  }
+
   try {
-    let error;
-    // Use session token if available, otherwise use legacy method
-    if (currentCustomer._token) {
-      if (cashier?.sessionToken) {
-        ({ error } = await sb.rpc('redeem_reward_by_token', {
-          p_qr_token:        currentCustomer._token,
-          p_cashier_session: cashier.sessionToken,
-          p_merchant_id:     merchant.id
-        }));
-      } else {
-        // Fallback: update directly without cashier session
-        const { error: e1 } = await sb
-          .from('customers')
-          .update({ stamps: 0 })
-          .eq('qr_token', currentCustomer._token)
-          .eq('merchant_id', merchant.id);
-        error = e1;
-        if (!error) {
-          await sb.from('scan_events').insert({
-            merchant_id: merchant.id,
-            customer_id: currentCustomer.id,
-            action: 'redeem_reward',
-            stamps_delta: 0
-          });
-        }
+    let data, error;
+
+    if (cashier?.sessionToken) {
+      ({ data, error } = await resilientRPC(() => sb.rpc('redeem_reward_by_id', {
+        p_customer_id:     customerId,
+        p_cashier_session: cashier.sessionToken,
+        p_merchant_id:     merchant.id
+      })));
+      if (!error && !data?.success) {
+        toast('Redemption blocked: ' + (data?.error || 'unknown reason'), 'error');
+        btn.disabled = false;
+        btn.querySelector('.action-btn-icon').innerHTML = '🎁';
+        return;
+      }
+    } else {
+      // Fallback: direct update by customer_id (not token)
+      const { error: e1 } = await sb
+        .from('customers')
+        .update({ stamps: 0 })
+        .eq('id', customerId)
+        .eq('merchant_id', merchant.id);
+      error = e1;
+      if (!error) {
+        await sb.from('scan_events').insert({
+          merchant_id: merchant.id,
+          customer_id: customerId,
+          action: 'redeem_reward',
+          stamps_delta: 0
+        });
       }
     }
 
