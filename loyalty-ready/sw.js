@@ -37,18 +37,16 @@ self.addEventListener('fetch', event => {
   // Supabase realtime websockets — skip, can't cache
   if (event.request.url.includes('supabase.co/realtime')) return;
 
-  // Supabase REST API — network first, cache response for offline
-  if (event.request.url.includes('supabase.co/rest')) {
+  // FIX 8: Never cache Supabase REST API responses
+  // Customer/admin data must never be served from cache
+  if (event.request.url.includes('supabase.co')) {
     event.respondWith(
-      fetch(event.request.clone())
-        .then(response => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(event.request))
+      fetch(event.request).catch(() => {
+        return new Response(JSON.stringify({ error: 'Offline' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
     );
     return;
   }
