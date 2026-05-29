@@ -1,4 +1,4 @@
-const CACHE_NAME = 'loyalty-v1';
+const CACHE_NAME = 'loyalty-v3';
 const STATIC_ASSETS = [
   './card.html',
   './manifest.json',
