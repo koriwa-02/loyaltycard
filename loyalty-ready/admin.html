@@ -595,7 +595,8 @@
       <div class="login-sub">Admin access only</div>
     </div>
     <div class="login-error" id="login-error"></div>
-    <input class="login-input" type="password" id="admin-pass" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')doLogin()">
+    <input class="login-input" type="email" id="admin-pass" placeholder="Admin email" autocomplete="email">
+    <input class="login-input" type="password" id="admin-pass2" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
     <button class="login-btn" onclick="doLogin()">Access Dashboard</button>
   </div>
 </div>
@@ -721,7 +722,7 @@
 <script>
 const SUPABASE_URL  = 'https://lvzzcwsttvbaqsnuwdze.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME';
-const ADMIN_PASS    = 'koriwa2025';  // ← change this to your password
+// FIX 5: Admin auth via Supabase Auth — no hardcoded password
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
@@ -730,20 +731,40 @@ let allCustomers  = [];
 let stampsChart   = null;
 
 // ── AUTH ──
-function doLogin() {
-  const pass = document.getElementById('admin-pass').value;
-  if (pass === ADMIN_PASS) {
-    sessionStorage.setItem('admin_auth', '1');
-    showDashboard();
-  } else {
-    const err = document.getElementById('login-error');
-    err.textContent = 'Wrong password. Try again.';
+async function doLogin() {
+  const email = document.getElementById('admin-pass').value.trim();
+  const pass  = document.getElementById('admin-pass2')?.value || '';
+  const err   = document.getElementById('login-error');
+  err.style.display = 'none';
+
+  if (!email || !pass) {
+    err.textContent = 'Enter your email and password.';
     err.style.display = 'block';
+    return;
   }
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+
+  if (error || !data.session) {
+    err.textContent = 'Invalid credentials.';
+    err.style.display = 'block';
+    return;
+  }
+
+  // Verify admin role in DB
+  const { data: adminCheck } = await sb.rpc('is_admin');
+  if (!adminCheck) {
+    await sb.auth.signOut();
+    err.textContent = 'Access denied — not an admin account.';
+    err.style.display = 'block';
+    return;
+  }
+
+  showDashboard();
 }
 
-function doLogout() {
-  sessionStorage.removeItem('admin_auth');
+async function doLogout() {
+  await sb.auth.signOut();
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
 }
@@ -751,12 +772,17 @@ function doLogout() {
 // ── INIT ──
 async function init() {
   document.getElementById('loading-overlay').style.display = 'flex';
-  if (sessionStorage.getItem('admin_auth') === '1') {
-    await showDashboard();
-  } else {
-    document.getElementById('loading-overlay').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'flex';
+  // FIX 5: Check real Supabase session, not sessionStorage
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    const { data: isAdminUser } = await sb.rpc('is_admin');
+    if (isAdminUser) {
+      await showDashboard();
+      return;
+    }
   }
+  document.getElementById('loading-overlay').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
 }
 
 async function showDashboard() {
