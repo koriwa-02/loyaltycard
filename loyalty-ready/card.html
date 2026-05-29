@@ -449,6 +449,7 @@ async function init() {
     loadHistory();
     subscribeToUpdates();
     showMain();
+    startQRLoop();
 
   } catch(e) {
     // Network error — try cache
@@ -501,9 +502,8 @@ function renderCard() {
     banner.style.display = 'none';
   }
 
-  // Always refresh token when card renders — ensures QR is never expired
-  refreshQRToken();
-  startQRLoop();
+  // Refresh QR on first render only — loop handles subsequent refreshes
+  if (!qrLoopTimer) refreshQRToken();
 }
 
 // ── QR CODE ──
@@ -619,6 +619,27 @@ async function loadHistory() {
 }
 
 // ── REALTIME ──
+function updateStampsUI() {
+  const c = customer, m = merchant;
+  if (!c || !m) return;
+  document.getElementById('c-count').textContent = c.stamps + ' / ' + m.total_stamps;
+  const grid = document.getElementById('c-stamps');
+  grid.innerHTML = '';
+  for (let i = 0; i < m.total_stamps; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'stamp' + (i < c.stamps ? ' filled' : '');
+    dot.textContent = i < c.stamps ? m.stamp_emoji : '';
+    grid.appendChild(dot);
+  }
+  const banner = document.getElementById('reward-banner');
+  if (c.stamps >= m.total_stamps) {
+    banner.style.display = 'flex';
+    document.getElementById('reward-banner-sub').textContent = 'You earned: ' + m.reward_label;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
 function subscribeToUpdates() {
   if (!customer?.id) return;
   sb.channel('customer-' + customer.id)
@@ -628,7 +649,8 @@ function subscribeToUpdates() {
     }, payload => {
       customer = { ...customer, ...payload.new };
       if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
-      renderCard();
+      // Update UI without touching QR — renderCard() would restart the loop and flicker QR
+      updateStampsUI();
       loadHistory();
       const card = document.getElementById('loyalty-card');
       card.style.transform = 'scale(1.02) translateZ(0)';
