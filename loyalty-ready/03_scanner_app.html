@@ -877,7 +877,7 @@ async function onQRScanned(rawQR) {
       // New secure token-based lookup — just show customer, don't stamp yet
       const { data, error } = await sb
         .from('customers')
-        .select('*')
+        .select('id, name, stamps, lifetime_stamps, created_at, card_serial, qr_token, qr_expires_at')
         .eq('qr_token', token)
         .eq('merchant_id', merchant.id)
         .single();
@@ -893,7 +893,7 @@ async function onQRScanned(rawQR) {
       // Legacy fallback — serial based
       const { data, error } = await sb
         .from('customers')
-        .select('*')
+        .select('id, name, stamps, lifetime_stamps, created_at, card_serial, qr_token, qr_expires_at')
         .eq('card_serial', cardSerial)
         .eq('merchant_id', merchant.id)
         .single();
