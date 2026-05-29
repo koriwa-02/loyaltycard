@@ -535,14 +535,20 @@ function generateQR(token) {
 }
 
 async function refreshQRToken() {
+  // Check expiry — only hit the DB if token is actually expired or close to it
+  const exp = customer?.qr_expires_at ? new Date(customer.qr_expires_at).getTime() : 0;
+  if (exp - Date.now() > 90 * 1000) {
+    // Token still fresh — just render it, no DB call
+    generateQR(customer?.qr_token);
+    return;
+  }
+
   if (!navigator.onLine) { generateQR(customer?.qr_token); return; }
 
   const secret = accessSecret || localStorage.getItem('loyalty_access_secret');
-  const serial = customer?.card_serial || localStorage.getItem('my_card_serial');
 
   try {
     if (secret) {
-      // New system — SECURITY DEFINER RPC, bypasses RLS
       const { data, error } = await sb.rpc('refresh_qr_token', { p_access_secret: secret });
       if (!error && data?.success) {
         if (customer) { customer.qr_token = data.token; customer.qr_expires_at = data.expires_at; }
@@ -551,24 +557,11 @@ async function refreshQRToken() {
         return;
       }
     }
-
-    if (serial) {
-      // Legacy system — direct update (requires anon RLS policy allowing it)
-      const newToken  = crypto.randomUUID();
-      const newExpiry = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-      const { error } = await sb.from('customers')
-        .update({ qr_token: newToken, qr_expires_at: newExpiry })
-        .eq('card_serial', serial);
-      if (!error) {
-        if (customer) { customer.qr_token = newToken; customer.qr_expires_at = newExpiry; }
-        generateQR(newToken);
-        if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
-        return;
-      }
-    }
-  } catch(e) { /* silent */ }
-
-  generateQR(customer?.qr_token);
+    // Legacy: no secret — just render existing token, scanner has 60s grace period
+    generateQR(customer?.qr_token);
+  } catch(e) {
+    generateQR(customer?.qr_token);
+  }
 }
 
 // ── BACKGROUND REFRESH LOOP ──
