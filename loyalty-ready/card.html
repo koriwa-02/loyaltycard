@@ -479,6 +479,50 @@ function applyBrand() {
 }
 
 // ── RENDER CARD ──
+// ── ROTATING QR ──
+let qrRefreshTimer = null;
+
+async function generateRotatingQR(c, m) {
+  // Fetch a fresh token from Supabase
+  try {
+    const { data, error } = await sb.rpc('refresh_qr_token', {
+      p_card_serial: c.card_serial
+    });
+
+    const token = data?.token || c.card_serial; // fallback to serial if RPC fails
+    const qrBox = document.getElementById('qr-box');
+    if (!qrBox) return;
+    qrBox.innerHTML = '';
+
+    new QRCode(qrBox, {
+      text: JSON.stringify({ t: token, m: m.id }),
+      width: 200, height: 200,
+      colorDark: '#0E0E0E',
+      colorLight: '#FFFFFF',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+
+    const serialEl = document.getElementById('serial-text');
+    if (serialEl) serialEl.textContent = 'Refreshes every 5 min • Secure';
+
+    // Auto-refresh every 4 minutes
+    if (qrRefreshTimer) clearTimeout(qrRefreshTimer);
+    qrRefreshTimer = setTimeout(() => generateRotatingQR(c, m), 4 * 60 * 1000);
+
+  } catch(e) {
+    // Fallback to card_serial if token system not set up yet
+    const qrBox = document.getElementById('qr-box');
+    if (!qrBox) return;
+    qrBox.innerHTML = '';
+    new QRCode(qrBox, {
+      text: JSON.stringify({ s: c.card_serial, m: m.id }),
+      width: 200, height: 200,
+      colorDark: '#0E0E0E', colorLight: '#FFFFFF',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  }
+}
+
 function renderCard() {
   const c = customer;
   const m = merchant;
@@ -509,36 +553,8 @@ function renderCard() {
     banner.style.display = 'none';
   }
 
-  // QR code — generate once
-  if (!qrGenerated) {
-    qrGenerated = true;
-    setTimeout(() => {
-      const qrBox = document.getElementById('qr-box');
-      if (!qrBox) return;
-      qrBox.innerHTML = '';
-      try {
-        new QRCode(qrBox, {
-          text: JSON.stringify({ s: c.card_serial, m: m.id }),
-          width: 200, height: 200,
-          colorDark: '#0E0E0E',
-          colorLight: '#FFFFFF',
-          correctLevel: QRCode.CorrectLevel.H
-        });
-        const serialEl = document.getElementById('serial-text');
-        if (serialEl) serialEl.textContent = c.card_serial.slice(0, 20) + '...';
-      } catch(e) {
-        setTimeout(() => {
-          qrBox.innerHTML = '';
-          new QRCode(qrBox, {
-            text: JSON.stringify({ s: c.card_serial, m: m.id }),
-            width: 200, height: 200,
-            colorDark: '#0E0E0E', colorLight: '#FFFFFF',
-            correctLevel: QRCode.CorrectLevel.H
-          });
-        }, 600);
-      }
-    }, 200);
-  }
+  // QR code — rotating token, refreshes every 4 minutes
+  generateRotatingQR(c, m);
 }
 
 // ── HISTORY ──
