@@ -785,39 +785,38 @@ async function submitForm() {
 
     if (error) {
       if (error.code === '23505') {
-        // Customer already exists — send OTP via Supabase Auth (free, no setup)
+        // Customer already exists — look up by phone or email and redirect to their card
+        const phoneVal = document.querySelector('#phone')?.value?.trim();
         const emailVal = document.querySelector('#email')?.value?.trim();
 
-        if (!emailVal) {
-          showError('You already have a card at this shop. Please enter your email to access it.');
+        const query = sb.from('customers')
+          .select('card_serial, access_secret')
+          .eq('merchant_id', merchant.id);
+
+        if (phoneVal) query.eq('phone', phoneVal);
+        else if (emailVal) query.eq('email', emailVal);
+        else {
+          showError('You already have a card here. Enter your phone or email to find it.');
           btn.disabled = false;
           btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
           return;
         }
 
-        btn.innerHTML = '<span>Sending verification code...</span>';
+        const { data: existing } = await query.single();
 
-        const { error: otpErr } = await sb.auth.signInWithOtp({
-          email: emailVal,
-          options: { shouldCreateUser: true }
-        });
-
-        if (otpErr) {
-          showError('Could not send code: ' + otpErr.message);
+        if (existing) {
+          const base  = window.location.pathname.replace('02_enrollment.html', 'card.html');
+          const param = existing.access_secret
+            ? '?secret=' + existing.access_secret
+            : '?id=' + existing.card_serial;
+          window.location.href = base + param;
+          return;
+        } else {
+          showError('Account not found. Contact the shop.');
           btn.disabled = false;
           btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
           return;
         }
-
-        // Redirect to verify page
-        const base = window.location.pathname.replace('02_enrollment.html', 'verify_code.html');
-        const vParams = new URLSearchParams({
-          email: emailVal,
-          mid: merchant.id,
-          me: emailVal.slice(0,2) + '****' + emailVal.slice(emailVal.indexOf('@'))
-        });
-        window.location.href = base + '?' + vParams.toString();
-        return;
       } else {
         throw error;
       }
@@ -968,4 +967,5 @@ init();
 </div>
 </body>
 </html>
+
 
