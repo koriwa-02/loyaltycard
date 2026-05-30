@@ -335,6 +335,45 @@ if (cardSerial)   {
   localStorage.setItem('loyalty_card_serial', cardSerial);
 }
 
+// ── DYNAMIC MANIFEST ── inject per-customer start_url so iOS "Add to Home Screen"
+// keeps the secret. The static manifest.json would strip the query string.
+(function injectDynamicManifest() {
+  try {
+    const param = accessSecret ? ('?secret=' + accessSecret)
+                : cardSerial   ? ('?id=' + cardSerial)
+                : '';
+    if (!param) return; // nothing to personalize — let static manifest stand
+
+    const startUrl = window.location.pathname + param;
+    const manifest = {
+      name: 'My Loyalty Card',
+      short_name: 'My Card',
+      start_url: startUrl,
+      scope: window.location.pathname.replace(/[^/]*$/, ''),
+      display: 'standalone',
+      orientation: 'portrait',
+      background_color: '#F4F3F0',
+      theme_color: '#0E0E0E',
+      icons: [
+        { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+        { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+    const url = URL.createObjectURL(blob);
+
+    // Remove any pre-existing static manifest link
+    document.querySelectorAll('link[rel="manifest"]').forEach(el => el.remove());
+
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = url;
+    document.head.appendChild(link);
+  } catch (e) {
+    console.warn('Dynamic manifest injection failed:', e);
+  }
+})();
+
 const cacheKey = accessSecret || cardSerial;
 
 // ── UI HELPERS ──
