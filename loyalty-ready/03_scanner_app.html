@@ -1018,8 +1018,6 @@ function renderCustomer(c) {
     document.querySelector('#btn-add-stamp').disabled = false;
   }
 
-  // Card scrolls into view
-  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   scanLocked = false;
   if (window.resumeScan) window.resumeScan(); // restart jsQR loop for next customer
 }
@@ -1173,10 +1171,11 @@ async function doRedeem() {
         return;
       }
     } else {
-      // Fallback: direct update by customer_id (not token)
+      // Fallback: reset stamps + rotate token in one write so card gets one clean Realtime event
+      const newToken = crypto.randomUUID();
       const { error: e1 } = await sb
         .from('customers')
-        .update({ stamps: 0 })
+        .update({ stamps: 0, qr_token: newToken, qr_expires_at: new Date(Date.now() + 5*60*1000).toISOString() })
         .eq('id', customerId)
         .eq('merchant_id', merchant.id);
       error = e1;
@@ -1258,12 +1257,18 @@ function addLogItem(name, type, label) {
   const now = new Date();
   const time = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
 
-  item.innerHTML = `
-    <div class="log-dot ${type}"></div>
-    <div class="log-customer">${name}</div>
-    <div class="log-action">${label}</div>
-    <div class="log-time">${time}</div>
-  `;
+  const dot = document.createElement('div');
+  dot.className = 'log-dot ' + type;
+  const cust = document.createElement('div');
+  cust.className = 'log-customer';
+  cust.textContent = name;
+  const act = document.createElement('div');
+  act.className = 'log-action';
+  act.textContent = label;
+  const t = document.createElement('div');
+  t.className = 'log-time';
+  t.textContent = time;
+  item.appendChild(dot); item.appendChild(cust); item.appendChild(act); item.appendChild(t);
 
   log.insertBefore(item, log.firstChild);
 
@@ -1286,12 +1291,11 @@ async function loadScanLog() {
       const log = document.querySelector('#scan-log');
       const item = document.createElement('div');
       item.className = 'log-item';
-      item.innerHTML = `
-        <div class="log-dot ${e.action === 'add_stamp' ? 'add' : 'redeem'}"></div>
-        <div class="log-customer">${e.customers?.name || 'Unknown'}</div>
-        <div class="log-action">${e.action === 'add_stamp' ? `+${e.stamps_delta} stamp` : 'Reward given'}</div>
-        <div class="log-time">${time}</div>
-      `;
+      const d2 = document.createElement('div'); d2.className = 'log-dot ' + (e.action === 'add_stamp' ? 'add' : 'redeem');
+      const c2 = document.createElement('div'); c2.className = 'log-customer'; c2.textContent = e.customers?.name || 'Unknown';
+      const a2 = document.createElement('div'); a2.className = 'log-action'; a2.textContent = e.action === 'add_stamp' ? '+' + e.stamps_delta + ' stamp' : 'Reward given';
+      const t2 = document.createElement('div'); t2.className = 'log-time'; t2.textContent = time;
+      item.appendChild(d2); item.appendChild(c2); item.appendChild(a2); item.appendChild(t2);
       log.appendChild(item);
     });
   }
@@ -1330,5 +1334,6 @@ if (saved) {
 </script>
 </body>
 </html>
+
 
 
