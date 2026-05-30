@@ -1094,6 +1094,7 @@ async function doAddStamp() {
     }
 
     if (error) throw error;
+    if (data && data.success === false) throw new Error(data.error || 'Stamp failed');
 
     // Animate the new stamp
     const grid = document.querySelector('#cust-stamps-grid');
@@ -1127,7 +1128,7 @@ async function doAddStamp() {
     }
 
   } catch(e) {
-    toast('Failed to add stamp', 'error');
+    toast(e.message || 'Failed to add stamp', 'error');
     btn.disabled = false;
   }
 
