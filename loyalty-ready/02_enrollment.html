@@ -804,6 +804,15 @@ async function submitForm() {
           return;
         }
 
+        // Send code via email if email provided
+        if (emailVal && otpData.code) {
+          await fetch('https://lvzzcwsttvbaqsnuwdze.supabase.co/functions/v1/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME' },
+            body: JSON.stringify({ code: otpData.code, email: emailVal, merchant_name: merchant.name })
+          }).catch(() => {}); // silent — don't block redirect on email failure
+        }
+
         // Redirect to verify page
         const base = window.location.pathname.replace('02_enrollment.html', 'verify_code.html');
         const vParams = new URLSearchParams({
@@ -813,7 +822,7 @@ async function submitForm() {
           ...(otpData.masked_phone ? { mp: otpData.masked_phone } : {}),
           ...(phoneVal ? { phone: phoneVal } : {}),
           ...(emailVal ? { email: emailVal } : {}),
-          ...(otpData.code ? { dev: otpData.code } : {}), // dev only
+          // dev param removed — code sent by email now
         });
         window.location.href = base + '?' + vParams.toString();
         return;
