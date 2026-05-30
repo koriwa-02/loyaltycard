@@ -400,8 +400,6 @@ async function init() {
 
   // Fetch from Supabase
   try {
-    let data = null;
-
     // Fetch customer via RPC (secure — no direct SELECT on customers table)
     let data = null;
     const identifier = accessSecret || cardSerial;
