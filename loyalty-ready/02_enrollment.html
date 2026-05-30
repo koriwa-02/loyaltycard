@@ -536,22 +536,6 @@
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
-
-  .otp-box {
-    width: 42px; height: 52px;
-    border-radius: 10px;
-    border: 1.5px solid var(--border);
-    background: var(--surface);
-    font-family: var(--font-display);
-    font-size: 20px;
-    font-weight: 700;
-    text-align: center;
-    color: var(--ink);
-    outline: none;
-    transition: border-color 0.15s;
-    padding: 0;
-  }
-  .otp-box:focus { border-color: var(--brand); background: #fff; }
 </style>
 </head>
 <body>
@@ -624,26 +608,6 @@
     </button>
   </div>
 
-  <!-- OTP STEP — hidden until email submitted -->
-  <div id="otp-card" class="form-card" style="display:none;margin-top:16px;">
-    <div class="form-title" id="otp-title">Check your email 🔐</div>
-    <div class="form-subtitle" id="otp-sub">We sent a 6-digit code to your email.</div>
-    <div class="error-msg" id="otp-error-msg"></div>
-    <div style="display:flex;gap:8px;justify-content:center;margin:20px 0;">
-      <input class="otp-box" maxlength="1" inputmode="numeric" id="o0">
-      <input class="otp-box" maxlength="1" inputmode="numeric" id="o1">
-      <input class="otp-box" maxlength="1" inputmode="numeric" id="o2">
-      <input class="otp-box" maxlength="1" inputmode="numeric" id="o3">
-      <input class="otp-box" maxlength="1" inputmode="numeric" id="o4">
-      <input class="otp-box" maxlength="1" inputmode="numeric" id="o5">
-    </div>
-    <button class="submit-btn" id="verify-btn" onclick="verifyAndEnroll()">
-      <span id="verify-btn-text">Verify & get my card</span>
-    </button>
-    <div style="text-align:center;margin-top:12px;">
-      <button onclick="resendOTP()" id="resend-btn" style="background:none;border:none;color:var(--brand);font-size:13px;cursor:pointer;font-family:var(--font-body);">Resend code</button>
-    </div>
-  </div>
 </div>
 
 <!-- SUCCESS / CARD VIEW -->
@@ -770,48 +734,16 @@ async function init() {
 // ─────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────
-let pendingEmail = null; // email waiting for OTP verification
-let otpStep = false;     // true = showing OTP input, false = showing form
-let existingCardUrl = null; // if set, OTP verification leads to existing card instead of new insert
-
-// ─────────────────────────────────────────────
-// OTP INPUT WIRING
-// ─────────────────────────────────────────────
-function wireOTPBoxes() {
-  const boxes = Array.from(document.querySelectorAll('.otp-box'));
-  boxes.forEach((box, i) => {
-    box.addEventListener('input', e => {
-      const val = e.target.value.replace(/\D/g, '');
-      box.value = val ? val[0] : '';
-      if (val && i < 5) boxes[i + 1].focus();
-      if (boxes.map(b => b.value).join('').length === 6) verifyAndEnroll();
-    });
-    box.addEventListener('keydown', e => {
-      if (e.key === 'Backspace' && !box.value && i > 0) {
-        boxes[i - 1].value = '';
-        boxes[i - 1].focus();
-      }
-    });
-    box.addEventListener('paste', e => {
-      e.preventDefault();
-      const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
-      pasted.split('').forEach((ch, idx) => { if (boxes[idx]) boxes[idx].value = ch; });
-      if (pasted.length === 6) verifyAndEnroll();
-      else boxes[Math.min(pasted.length, 5)].focus();
-    });
-  });
-}
 
 // ─────────────────────────────────────────────
 // PRIMARY BUTTON HANDLER
 // ─────────────────────────────────────────────
 function handlePrimaryBtn() {
-  if (otpStep) return; // safety
   submitForm();
 }
 
 // ─────────────────────────────────────────────
-// STEP 1 — VALIDATE FORM + SEND OTP (if email given) OR INSERT DIRECTLY
+// VALIDATE FORM + INSERT
 // ─────────────────────────────────────────────
 async function submitForm() {
   const name     = document.querySelector('#name').value.trim();
@@ -830,77 +762,11 @@ async function submitForm() {
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div>';
 
-  // Insert directly — no OTP verification.
-  // Returning customers (duplicate phone/email) are handled inside doInsert's 23505 branch.
   await doInsert({ name, phone, email: email || null, birthday });
 }
 
 // ─────────────────────────────────────────────
-// STEP 2 — VERIFY OTP THEN INSERT
-// ─────────────────────────────────────────────
-async function verifyAndEnroll() {
-  const boxes = Array.from(document.querySelectorAll('.otp-box'));
-  const code  = boxes.map(b => b.value).join('');
-  if (code.length < 6) return;
-
-  const vBtn = document.getElementById('verify-btn');
-  vBtn.disabled = true;
-  vBtn.innerHTML = '<div class="spinner"></div>';
-
-  const otpErrEl = document.getElementById('otp-error-msg');
-  otpErrEl.style.display = 'none';
-
-  const { error } = await sb.auth.verifyOtp({
-    email: pendingEmail,
-    token: code,
-    type:  'email'
-  });
-
-  if (error) {
-    otpErrEl.textContent = 'Invalid or expired code. Try again.';
-    otpErrEl.style.display = 'block';
-    vBtn.disabled = false;
-    vBtn.innerHTML = '<span id="verify-btn-text">Verify & get my card</span>';
-    boxes.forEach(b => b.value = '');
-    boxes[0].focus();
-    return;
-  }
-
-  // Verified — returning customer? redirect to their card. Otherwise insert.
-  if (existingCardUrl) {
-    window.location.href = existingCardUrl;
-    return;
-  }
-
-  const name     = document.querySelector('#name').value.trim();
-  const phone    = document.querySelector('#phone').value.trim();
-  const birthday = document.querySelector('#birthday').value || null;
-  await doInsert({ name, phone, email: pendingEmail, birthday });
-}
-
-// ─────────────────────────────────────────────
-// RESEND OTP
-// ─────────────────────────────────────────────
-let resendCooldown = 0;
-async function resendOTP() {
-  if (resendCooldown > 0 || !pendingEmail) return;
-  const resendBtn = document.getElementById('resend-btn');
-  resendBtn.disabled = true;
-  await sb.auth.signInWithOtp({ email: pendingEmail, options: { shouldCreateUser: true } });
-  resendCooldown = 60;
-  const cd = setInterval(() => {
-    resendCooldown--;
-    resendBtn.textContent = 'Resend code (' + resendCooldown + 's)';
-    if (resendCooldown <= 0) {
-      clearInterval(cd);
-      resendBtn.textContent = 'Resend code';
-      resendBtn.disabled = false;
-    }
-  }, 1000);
-}
-
-// ─────────────────────────────────────────────
-// CORE INSERT — called after OTP verified (or phone-only)
+// CORE INSERT
 // ─────────────────────────────────────────────
 async function doInsert({ name, phone, email, birthday }) {
   try {
@@ -1069,7 +935,6 @@ async function copyReferral() {
 // BOOT
 // ─────────────────────────────────────────────
 init();
-wireOTPBoxes();
 </script>
 <div id="wa-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:32px 24px;gap:20px;text-align:center;background:#F4F3F0;">
   <div style="font-size:56px">🎉</div>
