@@ -535,10 +535,11 @@ function generateQR(token) {
 }
 
 async function refreshQRToken() {
+  if (isUpdatingSelf) return; // rotation already in progress — skip
+
   // Check expiry — only hit the DB if token is actually expired or close to it
   const exp = customer?.qr_expires_at ? new Date(customer.qr_expires_at).getTime() : 0;
   if (exp - Date.now() > 90 * 1000) {
-    // Token still fresh — just render it, no DB call
     generateQR(customer?.qr_token);
     return;
   }
@@ -551,17 +552,21 @@ async function refreshQRToken() {
     if (secret) {
       isUpdatingSelf = true;
       const { data, error } = await sb.rpc('refresh_qr_token', { p_access_secret: secret });
-      isUpdatingSelf = false;
       if (!error && data?.success) {
         if (customer) { customer.qr_token = data.token; customer.qr_expires_at = data.expires_at; }
         generateQR(data.token);
         if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
-        return;
+      } else {
+        generateQR(customer?.qr_token);
       }
+      // Hold lock for 1s — lets Realtime broadcast pass before we accept external updates
+      setTimeout(() => { isUpdatingSelf = false; }, 1000);
+      return;
     }
     // Legacy: no secret — just render existing token, scanner has 60s grace period
     generateQR(customer?.qr_token);
   } catch(e) {
+    isUpdatingSelf = false;
     generateQR(customer?.qr_token);
   }
 }
