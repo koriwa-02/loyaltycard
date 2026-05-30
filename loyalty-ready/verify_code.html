@@ -60,16 +60,9 @@
     margin-bottom: 8px;
   }
   .sub strong { color: var(--ink); font-weight: 600; }
-
-  /* OTP input boxes */
-  .otp-wrap {
-    display: flex;
-    gap: 10px;
-    margin: 16px 0 8px;
-  }
+  .otp-wrap { display: flex; gap: 10px; margin: 16px 0 8px; }
   .otp-box {
-    width: 46px;
-    height: 56px;
+    width: 46px; height: 56px;
     border-radius: 12px;
     border: 1.5px solid var(--border);
     background: var(--surface);
@@ -80,11 +73,9 @@
     color: var(--ink);
     outline: none;
     transition: border-color 0.15s;
-    -webkit-appearance: none;
   }
   .otp-box:focus { border-color: var(--brand); background: #fff; }
   .otp-box.filled { border-color: var(--brand); background: #fff; }
-
   .verify-btn {
     width: 100%;
     padding: 16px;
@@ -102,7 +93,6 @@
   .verify-btn:hover { background: var(--brand-dark); }
   .verify-btn:active { transform: scale(0.98); }
   .verify-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
   .resend-btn {
     background: none;
     border: none;
@@ -114,20 +104,8 @@
     padding: 8px;
   }
   .resend-btn:disabled { color: var(--ink-muted); cursor: not-allowed; }
-
-  .error-msg {
-    color: #E24B4A;
-    font-size: 13px;
-    text-align: center;
-    min-height: 18px;
-    font-weight: 400;
-  }
-  .success-msg {
-    color: var(--brand);
-    font-size: 13px;
-    text-align: center;
-    min-height: 18px;
-  }
+  .error-msg { color: #E24B4A; font-size: 13px; text-align: center; min-height: 18px; }
+  .success-msg { color: var(--brand); font-size: 13px; text-align: center; min-height: 18px; }
   .ring {
     width: 28px; height: 28px;
     border: 3px solid rgba(0,0,0,0.08);
@@ -137,33 +115,16 @@
     display: none;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Dev code display */
-  .dev-code {
-    background: #0E0E0E;
-    color: #1D9E75;
-    font-family: monospace;
-    font-size: 13px;
-    padding: 10px 16px;
-    border-radius: 10px;
-    text-align: center;
-    width: 100%;
-    margin-top: 4px;
-    display: none;
-  }
 </style>
 </head>
 <body>
-
 <div class="card">
   <div class="icon">🔐</div>
-  <div class="title">Verify your identity</div>
+  <div class="title">Check your email</div>
   <div class="sub" id="sub-text">
-    We sent a <strong>6-digit code</strong> to your contact on file.<br>
+    We sent a <strong>6-digit code</strong> to your email.<br>
     Enter it below to access your card.
   </div>
-
-  <div class="dev-code" id="dev-code"></div>
 
   <div class="otp-wrap" id="otp-wrap">
     <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d0">
@@ -187,29 +148,23 @@ const SUPABASE_URL  = 'https://lvzzcwsttvbaqsnuwdze.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// Read params from URL
 const params     = new URLSearchParams(window.location.search);
-const customerId = params.get('cid');
+const email      = params.get('email');
+const merchantId = params.get('mid');
 const maskedEmail = params.get('me');
-const maskedPhone = params.get('mp');
-const devCode     = params.get('dev'); // temporary — remove in prod
 
-// Update subtitle with masked contact
-if (maskedEmail || maskedPhone) {
-  const contact = maskedEmail || maskedPhone;
+if (maskedEmail) {
   document.getElementById('sub-text').innerHTML =
-    `We sent a <strong>6-digit code</strong> to <strong>${contact}</strong>.<br>Enter it below to access your card.`;
+    'We sent a <strong>6-digit code</strong> to <strong>' + maskedEmail + '</strong>.<br>Enter it below to access your card.';
 }
 
-// Dev code display removed — code sent via email
-
-if (!customerId) {
+if (!email) {
   document.getElementById('sub-text').textContent = 'Invalid link. Please go back and try again.';
   document.getElementById('verify-btn').disabled = true;
   document.getElementById('otp-wrap').style.display = 'none';
 }
 
-// ── OTP INPUT LOGIC ──
+// ── OTP INPUT ──
 const boxes = Array.from(document.querySelectorAll('.otp-box'));
 
 boxes.forEach((box, i) => {
@@ -220,7 +175,6 @@ boxes.forEach((box, i) => {
     if (val && i < 5) boxes[i + 1].focus();
     if (getCode().length === 6) submitCode();
   });
-
   box.addEventListener('keydown', e => {
     if (e.key === 'Backspace' && !box.value && i > 0) {
       boxes[i - 1].value = '';
@@ -228,39 +182,26 @@ boxes.forEach((box, i) => {
       boxes[i - 1].focus();
     }
   });
-
   box.addEventListener('paste', e => {
     e.preventDefault();
     const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
     pasted.split('').forEach((ch, idx) => {
-      if (boxes[idx]) {
-        boxes[idx].value = ch;
-        boxes[idx].classList.add('filled');
-      }
+      if (boxes[idx]) { boxes[idx].value = ch; boxes[idx].classList.add('filled'); }
     });
     if (pasted.length === 6) submitCode();
     else boxes[Math.min(pasted.length, 5)].focus();
   });
 });
 
-function getCode() {
-  return boxes.map(b => b.value).join('');
-}
-
-function setError(msg) {
-  document.getElementById('error-msg').textContent = msg;
-  document.getElementById('success-msg').textContent = '';
-}
-function setSuccess(msg) {
-  document.getElementById('success-msg').textContent = msg;
-  document.getElementById('error-msg').textContent = '';
-}
+function getCode() { return boxes.map(b => b.value).join(''); }
+function setError(msg) { document.getElementById('error-msg').textContent = msg; document.getElementById('success-msg').textContent = ''; }
+function setSuccess(msg) { document.getElementById('success-msg').textContent = msg; document.getElementById('error-msg').textContent = ''; }
 
 // ── VERIFY ──
 async function submitCode() {
   const code = getCode();
   if (code.length < 6) { setError('Enter all 6 digits'); return; }
-  if (!customerId) return;
+  if (!email) return;
 
   const btn  = document.getElementById('verify-btn');
   const ring = document.getElementById('ring');
@@ -268,69 +209,68 @@ async function submitCode() {
   ring.style.display = 'block';
   setError('');
 
-  const { data, error } = await sb.rpc('verify_otp', {
-    p_customer_id: customerId,
-    p_code:        code
+  // Verify OTP via Supabase Auth
+  const { data, error } = await sb.auth.verifyOtp({
+    email,
+    token: code,
+    type: 'email'
   });
 
-  ring.style.display = 'none';
-
-  if (error || !data?.success) {
-    setError(data?.error || 'Invalid code. Try again.');
+  if (error) {
+    ring.style.display = 'none';
+    setError('Invalid or expired code. Try again.');
     btn.disabled = false;
     boxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
     boxes[0].focus();
     return;
   }
 
-  setSuccess('✓ Verified! Opening your card...');
+  setSuccess('Verified! Opening your card...');
+
+  // Look up their card by email + merchant
+  const { data: customer } = await sb
+    .from('customers')
+    .select('card_serial, access_secret')
+    .eq('email', email)
+    .eq('merchant_id', merchantId)
+    .single();
+
+  ring.style.display = 'none';
+
+  if (!customer) {
+    setError('Account not found. Contact the shop.');
+    btn.disabled = false;
+    return;
+  }
 
   const base  = window.location.pathname.replace('verify_code.html', 'card.html');
-  const param = data.access_secret ? '?secret=' + data.access_secret : '?id=' + data.card_serial;
+  const param = customer.access_secret ? '?secret=' + customer.access_secret : '?id=' + customer.card_serial;
   setTimeout(() => { window.location.href = base + param; }, 800);
 }
 
 // ── RESEND ──
 let resendCooldown = 0;
 async function resendCode() {
-  if (resendCooldown > 0) return;
-  const phone = params.get('phone');
-  const email = params.get('email');
-  const merchantId = params.get('mid');
-
-  if (!phone && !email) { setError('Cannot resend — missing contact info.'); return; }
-
+  if (resendCooldown > 0 || !email) return;
   const resendBtn = document.getElementById('resend-btn');
   resendBtn.disabled = true;
 
-  const { data, error } = await sb.rpc('request_verification_code', {
-    p_phone:       phone || null,
-    p_email:       email || null,
-    p_merchant_id: merchantId || null
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false }
   });
 
-  if (error || !data?.success) {
-    setError(data?.error || 'Could not resend. Try again.');
+  if (error) {
+    setError('Could not resend: ' + error.message);
     resendBtn.disabled = false;
     return;
   }
 
-  // Send via email
-  if (email && data.code) {
-    await fetch('https://lvzzcwsttvbaqsnuwdze.supabase.co/functions/v1/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME' },
-      body: JSON.stringify({ code: data.code, email, merchant_name: params.get('mn') || '' })
-    }).catch(() => {});
-  }
-
-  setSuccess('New code sent to your email!');
-
-  // 60s cooldown
+  setSuccess('New code sent!');
   resendCooldown = 60;
   const countdown = setInterval(() => {
     resendCooldown--;
-    resendBtn.textContent = `Resend code (${resendCooldown}s)`;
+    resendBtn.textContent = 'Resend code (' + resendCooldown + 's)';
     if (resendCooldown <= 0) {
       clearInterval(countdown);
       resendBtn.textContent = 'Resend code';
@@ -339,7 +279,6 @@ async function resendCode() {
   }, 1000);
 }
 
-// Auto-focus first box
 boxes[0].focus();
 </script>
 </body>
