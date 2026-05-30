@@ -799,7 +799,7 @@ async function submitForm() {
 
         const { error: otpErr } = await sb.auth.signInWithOtp({
           email: emailVal,
-          options: { shouldCreateUser: false }
+          options: { shouldCreateUser: true }
         });
 
         if (otpErr) {
