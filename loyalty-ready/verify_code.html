@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verify your identity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --brand: #1D9E75;
+    --brand-dark: #0F6E56;
+    --ink: #0E0E0E;
+    --ink-muted: #6B6B6B;
+    --surface: #F4F3F0;
+    --card-bg: #FFFFFF;
+    --border: rgba(0,0,0,0.07);
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body);
+    background: var(--surface);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: var(--ink);
+  }
+  .card {
+    background: var(--card-bg);
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    padding: 32px 24px;
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .icon { font-size: 40px; margin-bottom: 4px; }
+  .title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    text-align: center;
+    letter-spacing: -0.02em;
+  }
+  .sub {
+    font-size: 14px;
+    color: var(--ink-muted);
+    text-align: center;
+    line-height: 1.6;
+    font-weight: 300;
+    margin-bottom: 8px;
+  }
+  .sub strong { color: var(--ink); font-weight: 600; }
+
+  /* OTP input boxes */
+  .otp-wrap {
+    display: flex;
+    gap: 10px;
+    margin: 16px 0 8px;
+  }
+  .otp-box {
+    width: 46px;
+    height: 56px;
+    border-radius: 12px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+  .otp-box:focus { border-color: var(--brand); background: #fff; }
+  .otp-box.filled { border-color: var(--brand); background: #fff; }
+
+  .verify-btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 12px;
+    background: var(--brand);
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .verify-btn:hover { background: var(--brand-dark); }
+  .verify-btn:active { transform: scale(0.98); }
+  .verify-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .resend-btn {
+    background: none;
+    border: none;
+    color: var(--brand);
+    font-size: 14px;
+    cursor: pointer;
+    font-family: var(--font-body);
+    margin-top: 4px;
+    padding: 8px;
+  }
+  .resend-btn:disabled { color: var(--ink-muted); cursor: not-allowed; }
+
+  .error-msg {
+    color: #E24B4A;
+    font-size: 13px;
+    text-align: center;
+    min-height: 18px;
+    font-weight: 400;
+  }
+  .success-msg {
+    color: var(--brand);
+    font-size: 13px;
+    text-align: center;
+    min-height: 18px;
+  }
+  .ring {
+    width: 28px; height: 28px;
+    border: 3px solid rgba(0,0,0,0.08);
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Dev code display */
+  .dev-code {
+    background: #0E0E0E;
+    color: #1D9E75;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    text-align: center;
+    width: 100%;
+    margin-top: 4px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="icon">🔐</div>
+  <div class="title">Verify your identity</div>
+  <div class="sub" id="sub-text">
+    We sent a <strong>6-digit code</strong> to your contact on file.<br>
+    Enter it below to access your card.
+  </div>
+
+  <div class="dev-code" id="dev-code"></div>
+
+  <div class="otp-wrap" id="otp-wrap">
+    <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d0">
+    <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d1">
+    <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d2">
+    <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d3">
+    <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d4">
+    <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d5">
+  </div>
+
+  <div class="error-msg" id="error-msg"></div>
+  <div class="success-msg" id="success-msg"></div>
+  <div class="ring" id="ring"></div>
+
+  <button class="verify-btn" id="verify-btn" onclick="submitCode()">Verify & open my card</button>
+  <button class="resend-btn" id="resend-btn" onclick="resendCode()">Resend code</button>
+</div>
+
+<script>
+const SUPABASE_URL  = 'https://lvzzcwsttvbaqsnuwdze.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// Read params from URL
+const params     = new URLSearchParams(window.location.search);
+const customerId = params.get('cid');
+const maskedEmail = params.get('me');
+const maskedPhone = params.get('mp');
+const devCode     = params.get('dev'); // temporary — remove in prod
+
+// Update subtitle with masked contact
+if (maskedEmail || maskedPhone) {
+  const contact = maskedEmail || maskedPhone;
+  document.getElementById('sub-text').innerHTML =
+    `We sent a <strong>6-digit code</strong> to <strong>${contact}</strong>.<br>Enter it below to access your card.`;
+}
+
+// Dev: show code on screen (remove once email is wired)
+if (devCode) {
+  const devEl = document.getElementById('dev-code');
+  devEl.style.display = 'block';
+  devEl.textContent = '🛠 Dev mode — your code: ' + devCode;
+}
+
+if (!customerId) {
+  document.getElementById('sub-text').textContent = 'Invalid link. Please go back and try again.';
+  document.getElementById('verify-btn').disabled = true;
+  document.getElementById('otp-wrap').style.display = 'none';
+}
+
+// ── OTP INPUT LOGIC ──
+const boxes = Array.from(document.querySelectorAll('.otp-box'));
+
+boxes.forEach((box, i) => {
+  box.addEventListener('input', e => {
+    const val = e.target.value.replace(/\D/g, '');
+    box.value = val ? val[0] : '';
+    box.classList.toggle('filled', !!box.value);
+    if (val && i < 5) boxes[i + 1].focus();
+    if (getCode().length === 6) submitCode();
+  });
+
+  box.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !box.value && i > 0) {
+      boxes[i - 1].value = '';
+      boxes[i - 1].classList.remove('filled');
+      boxes[i - 1].focus();
+    }
+  });
+
+  box.addEventListener('paste', e => {
+    e.preventDefault();
+    const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+    pasted.split('').forEach((ch, idx) => {
+      if (boxes[idx]) {
+        boxes[idx].value = ch;
+        boxes[idx].classList.add('filled');
+      }
+    });
+    if (pasted.length === 6) submitCode();
+    else boxes[Math.min(pasted.length, 5)].focus();
+  });
+});
+
+function getCode() {
+  return boxes.map(b => b.value).join('');
+}
+
+function setError(msg) {
+  document.getElementById('error-msg').textContent = msg;
+  document.getElementById('success-msg').textContent = '';
+}
+function setSuccess(msg) {
+  document.getElementById('success-msg').textContent = msg;
+  document.getElementById('error-msg').textContent = '';
+}
+
+// ── VERIFY ──
+async function submitCode() {
+  const code = getCode();
+  if (code.length < 6) { setError('Enter all 6 digits'); return; }
+  if (!customerId) return;
+
+  const btn  = document.getElementById('verify-btn');
+  const ring = document.getElementById('ring');
+  btn.disabled = true;
+  ring.style.display = 'block';
+  setError('');
+
+  const { data, error } = await sb.rpc('verify_otp', {
+    p_customer_id: customerId,
+    p_code:        code
+  });
+
+  ring.style.display = 'none';
+
+  if (error || !data?.success) {
+    setError(data?.error || 'Invalid code. Try again.');
+    btn.disabled = false;
+    boxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
+    boxes[0].focus();
+    return;
+  }
+
+  setSuccess('✓ Verified! Opening your card...');
+
+  const base  = window.location.pathname.replace('verify_code.html', 'card.html');
+  const param = data.access_secret ? '?secret=' + data.access_secret : '?id=' + data.card_serial;
+  setTimeout(() => { window.location.href = base + param; }, 800);
+}
+
+// ── RESEND ──
+let resendCooldown = 0;
+async function resendCode() {
+  if (resendCooldown > 0) return;
+  const phone = params.get('phone');
+  const email = params.get('email');
+  const merchantId = params.get('mid');
+
+  if (!phone && !email) { setError('Cannot resend — missing contact info.'); return; }
+
+  const resendBtn = document.getElementById('resend-btn');
+  resendBtn.disabled = true;
+
+  const { data, error } = await sb.rpc('request_verification_code', {
+    p_phone:       phone || null,
+    p_email:       email || null,
+    p_merchant_id: merchantId || null
+  });
+
+  if (error || !data?.success) {
+    setError(data?.error || 'Could not resend. Try again.');
+    resendBtn.disabled = false;
+    return;
+  }
+
+  setSuccess('New code sent!');
+
+  // Update dev code if shown
+  if (data.code) {
+    const devEl = document.getElementById('dev-code');
+    devEl.style.display = 'block';
+    devEl.textContent = '🛠 Dev mode — your code: ' + data.code;
+  }
+
+  // 60s cooldown
+  resendCooldown = 60;
+  const countdown = setInterval(() => {
+    resendCooldown--;
+    resendBtn.textContent = `Resend code (${resendCooldown}s)`;
+    if (resendCooldown <= 0) {
+      clearInterval(countdown);
+      resendBtn.textContent = 'Resend code';
+      resendBtn.disabled = false;
+    }
+  }, 1000);
+}
+
+// Auto-focus first box
+boxes[0].focus();
+</script>
+</body>
+</html>
