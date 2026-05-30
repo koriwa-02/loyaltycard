@@ -831,17 +831,29 @@ async function submitForm() {
 
   // If email provided — send OTP first, verify before inserting
   if (email) {
-    const { error: otpErr } = await sb.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true }
-    });
+    let otpData, otpErr;
+    try {
+      const res = await sb.auth.signInWithOtp({
+        email: email,
+        options: { shouldCreateUser: true }
+      });
+      otpData = res.data;
+      otpErr  = res.error;
+    } catch(e) {
+      otpErr = { message: e.message, status: 'EXCEPTION' };
+    }
 
+    // Full error reporting — visible on screen + console
     if (otpErr) {
-      showError('Could not send verification code: ' + otpErr.message);
+      const detail = 'Status: ' + (otpErr.status || '?') + ' | ' + (otpErr.message || 'Unknown error');
+      console.error('Supabase Auth Failure Details:', otpErr.status, otpErr.message, otpErr);
+      showError('Email code failed — ' + detail);
       btn.disabled = false;
       btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
       return;
     }
+
+    console.log('OTP sent successfully:', otpData);
 
     // Show OTP step
     pendingEmail = email;
