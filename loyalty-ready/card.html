@@ -734,8 +734,12 @@ if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !window.matchMedia('(displa
 }
 
 // ── SERVICE WORKER ──
+// Service worker was caching old code and serving wrong customers.
+// Unregister any previously-installed worker for this scope so fresh HTML always loads.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister().catch(() => {}));
+  }).catch(() => {});
 }
 
 // ── BOOT ──
