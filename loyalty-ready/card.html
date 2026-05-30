@@ -317,26 +317,27 @@ function getClean(val) {
   return (c === '' || c === 'null' || c === 'undefined') ? null : c;
 }
 
+// ── ONE-TIME PURGE OF LEGACY IDENTITY KEYS ──
+// Older versions of this page saved identity to localStorage, which caused
+// cross-customer card mixing. Remove those keys so they can never be read again.
+try {
+  localStorage.removeItem('loyalty_access_secret');
+  localStorage.removeItem('my_card_serial');
+  localStorage.removeItem('loyalty_card_serial');
+} catch (e) {}
+
 const params = new URLSearchParams(window.location.search);
 const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
 
+// IDENTITY: URL ONLY. localStorage is NEVER used as a fallback identifier —
+// that caused cross-customer card mixing when multiple cards opened in the same browser.
 const accessSecret = getClean(params.get('secret'))
   || getClean(hashParams.get('secret'))
-  || getClean(localStorage.getItem('loyalty_access_secret'))
   || null;
 
 const cardSerial = getClean(params.get('id'))
   || getClean(hashParams.get('id'))
-  || getClean(localStorage.getItem('my_card_serial'))
-  || getClean(localStorage.getItem('loyalty_card_serial'))
   || null;
-
-// Save whatever we found
-if (accessSecret) localStorage.setItem('loyalty_access_secret', accessSecret);
-if (cardSerial)   {
-  localStorage.setItem('my_card_serial', cardSerial);
-  localStorage.setItem('loyalty_card_serial', cardSerial);
-}
 
 // ── URL REWRITE FOR iOS "ADD TO HOME SCREEN" ──
 // iOS strips ?query when saving as a web app but PRESERVES #hash.
@@ -375,21 +376,10 @@ function showNotFound() {
 
 // ── INIT ──
 async function init() {
-  // Nothing to look up
+  // No identifier in URL → can't show a card
   if (!accessSecret && !cardSerial) {
-    // Last resort — regex scrape full href for UUID
-    const m = window.location.href.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
-    if (m && m.length > 0) {
-      // Try each UUID found
-      for (const uuid of m) {
-        localStorage.setItem('my_card_serial', uuid);
-        localStorage.setItem('loyalty_card_serial', uuid);
-        break;
-      }
-    } else {
-      showNotFound();
-      return;
-    }
+    showNotFound();
+    return;
   }
 
   // Try cache first if offline
