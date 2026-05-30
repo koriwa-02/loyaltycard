@@ -626,7 +626,7 @@
 
   <!-- OTP STEP — hidden until email submitted -->
   <div id="otp-card" class="form-card" style="display:none;margin-top:16px;">
-    <div class="form-title">Check your email 🔐</div>
+    <div class="form-title" id="otp-title">Check your email 🔐</div>
     <div class="form-subtitle" id="otp-sub">We sent a 6-digit code to your email.</div>
     <div class="error-msg" id="otp-error-msg"></div>
     <div style="display:flex;gap:8px;justify-content:center;margin:20px 0;">
@@ -772,6 +772,7 @@ async function init() {
 // ─────────────────────────────────────────────
 let pendingEmail = null; // email waiting for OTP verification
 let otpStep = false;     // true = showing OTP input, false = showing form
+let existingCardUrl = null; // if set, OTP verification leads to existing card instead of new insert
 
 // ─────────────────────────────────────────────
 // OTP INPUT WIRING
@@ -828,6 +829,63 @@ async function submitForm() {
 
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div>';
+
+  // ─── Returning-customer check (BEFORE sending OTP) ───
+  // If phone or email already exists under this merchant, route through OTP-to-stored-email
+  try {
+    let dupQuery = sb.from('customers')
+      .select('card_serial, access_secret, email')
+      .eq('merchant_id', merchant.id);
+    if (phone && email)      dupQuery = dupQuery.or('phone.eq.' + phone + ',email.eq.' + email);
+    else if (phone)          dupQuery = dupQuery.eq('phone', phone);
+    else if (email)          dupQuery = dupQuery.eq('email', email);
+    const { data: existing } = await dupQuery.maybeSingle();
+
+    if (existing) {
+      const base = window.location.pathname.replace('02_enrollment.html', 'card.html');
+      const cardUrl = base + (existing.access_secret ? '?secret=' + existing.access_secret : '?id=' + existing.card_serial);
+
+      if (existing.email) {
+        // Returning customer with email on file — verify they own it
+        let otpErr;
+        try {
+          const res = await sb.auth.signInWithOtp({
+            email: existing.email,
+            options: { shouldCreateUser: false }
+          });
+          otpErr = res.error;
+        } catch(e) {
+          otpErr = { message: e.message, status: 'EXCEPTION' };
+        }
+        if (otpErr) {
+          showError('Could not send code — ' + (otpErr.message || 'Unknown error'));
+          btn.disabled = false;
+          btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
+          return;
+        }
+        pendingEmail = existing.email;
+        existingCardUrl = cardUrl;
+        otpStep = true;
+        const masked = existing.email.slice(0,2) + '****' + existing.email.slice(existing.email.indexOf('@'));
+        document.getElementById('otp-title').textContent = 'Welcome back 👋';
+        document.getElementById('otp-sub').textContent = 'You already have a card here. We sent a code to ' + masked + ' to confirm it\u2019s you.';
+        document.getElementById('otp-card').style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
+        btn.style.opacity = '0.4';
+        btn.style.pointerEvents = 'none';
+        document.getElementById('o0').focus();
+        return;
+      } else {
+        // No email on file — can't verify, fall back to direct redirect
+        window.location.href = cardUrl;
+        return;
+      }
+    }
+  } catch (e) {
+    console.error('Duplicate check failed:', e);
+    // Fall through to normal enrollment flow
+  }
 
   // If email provided — send OTP first, verify before inserting
   if (email) {
@@ -904,7 +962,12 @@ async function verifyAndEnroll() {
     return;
   }
 
-  // Verified — now insert the customer
+  // Verified — returning customer? redirect to their card. Otherwise insert.
+  if (existingCardUrl) {
+    window.location.href = existingCardUrl;
+    return;
+  }
+
   const name     = document.querySelector('#name').value.trim();
   const phone    = document.querySelector('#phone').value.trim();
   const birthday = document.querySelector('#birthday').value || null;
