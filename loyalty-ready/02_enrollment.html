@@ -905,35 +905,6 @@ function showSuccess() {
   document.getElementById('wa-screen').style.display = 'flex';
   document.getElementById('wa-btn').href = waUrl;
   document.getElementById('wa-card-btn').href = cardUrl;
-  return;
-  document.querySelector('#enroll-view').style.display = 'none';
-  const sv = document.querySelector('#success-view');
-  sv.style.display = 'flex';
-  sv.scrollIntoView({ behavior: 'smooth' });
-
-  // Populate card preview
-  document.querySelector('#cp-shop').textContent   = merchant.name;
-  document.querySelector('#cp-name').textContent   = newCustomer.name;
-  document.querySelector('#cp-reward').textContent = merchant.reward_label;
-  document.querySelector('#cp-count').textContent  = `${newCustomer.stamps} / ${merchant.total_stamps} stamps`;
-  document.querySelector('#card-preview-bg').style.background = merchant.brand_color;
-
-  // Stamp dots
-  const stampsRow = document.querySelector('#cp-stamps');
-  for (let i = 0; i < merchant.total_stamps; i++) {
-    const dot = document.createElement('div');
-    dot.className = 'stamp-dot' + (i < newCustomer.stamps ? ' filled' : '');
-    dot.textContent = i < newCustomer.stamps ? merchant.stamp_emoji : '';
-    stampsRow.appendChild(dot);
-  }
-
-  // QR code — encodes the card serial (scanned by cashier app)
-  const qrData = JSON.stringify({
-    s: newCustomer.card_serial,
-    m: merchant.id
-  });
-
-  document.querySelector('#qr-serial').textContent = newCustomer.card_serial.slice(0, 16) + '...';
 
   new QRCode(document.querySelector('#qr-container'), {
     text: qrData,
