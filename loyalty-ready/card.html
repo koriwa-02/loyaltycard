@@ -402,27 +402,13 @@ async function init() {
   try {
     let data = null;
 
-    // Try access_secret first (new secure system)
-    if (accessSecret) {
-      const { data: d, error } = await sb.rpc('get_card_by_secret', { p_secret: accessSecret });
-      if (!error && d?.success) data = d;
-    }
-
-    // Fall back to card_serial (legacy + existing customers)
-    if (!data && cardSerial) {
-      const { data: d, error } = await sb
-        .from('customers')
-        .select('id, name, stamps, lifetime_stamps, card_serial, referral_code, created_at, qr_token, qr_expires_at, merchants(id, name, slug, brand_color, stamp_emoji, total_stamps, reward_label, points_per_visit)')
-        .eq('card_serial', cardSerial)
-        .single();
-
-      if (!error && d) {
-        // Shape into same format as RPC response
-        data = {
-          success: true,
-          ...d,
-          merchant: d.merchants
-        };
+    // Fetch customer via RPC (secure — no direct SELECT on customers table)
+    let data = null;
+    const identifier = accessSecret || cardSerial;
+    if (identifier) {
+      const { data: rows, error } = await sb.rpc('get_card_by_secret', { p_identifier: identifier });
+      if (!error && rows && rows.length > 0) {
+        data = rows[0];
       }
     }
 
@@ -442,6 +428,17 @@ async function init() {
       return;
     }
 
+    // Fetch merchant separately (merchants SELECT is RLS-allowed for active rows)
+    let merchantData = null;
+    if (data.merchant_id) {
+      const { data: m } = await sb
+        .from('merchants')
+        .select('id, name, slug, brand_color, stamp_emoji, total_stamps, reward_label, points_per_visit')
+        .eq('id', data.merchant_id)
+        .single();
+      merchantData = m;
+    }
+
     // Shape data
     customer = {
       id:             data.id,
@@ -454,7 +451,7 @@ async function init() {
       qr_token:       data.qr_token,
       qr_expires_at:  data.qr_expires_at,
     };
-    merchant = data.merchant || data.merchants;
+    merchant = merchantData;
 
     // Cache for offline
     localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
@@ -564,18 +561,17 @@ let tokenRefreshTimer = null;
 
 async function refreshTokenSilently() {
   try {
-    if (!customer?.id) return;
-    const { data, error } = await sb
-      .from('customers')
-      .select('qr_token, qr_expires_at')
-      .eq('id', customer.id)
-      .single();
-    if (error || !data || !data.qr_token) return;
-    if (data.qr_token === lastKnownToken) return; // no change → no redraw
-    lastKnownToken = data.qr_token;
-    customer.qr_token = data.qr_token;
-    customer.qr_expires_at = data.qr_expires_at;
-    generateQR(data.qr_token);
+    const identifier = accessSecret || cardSerial;
+    if (!identifier) return;
+    const { data: rows, error } = await sb.rpc('get_card_by_secret', { p_identifier: identifier });
+    if (error || !rows || rows.length === 0) return;
+    const row = rows[0];
+    if (!row.qr_token) return;
+    if (row.qr_token === lastKnownToken) return; // no change → no redraw
+    lastKnownToken = row.qr_token;
+    customer.qr_token = row.qr_token;
+    customer.qr_expires_at = row.qr_expires_at;
+    generateQR(row.qr_token);
   } catch (e) {
     // network blip — try again on next tick, no UI noise
   }
