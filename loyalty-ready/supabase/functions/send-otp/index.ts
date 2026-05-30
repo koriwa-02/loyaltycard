@@ -44,15 +44,16 @@ serve(async (req) => {
     })
   })
 
+  const resBody = await res.json()
+
   if (!res.ok) {
-    const err = await res.text()
-    return new Response(JSON.stringify({ error: err }), {
+    return new Response(JSON.stringify({ error: resBody }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     })
   }
 
-  return new Response(JSON.stringify({ success: true }), {
+  return new Response(JSON.stringify({ success: true, id: resBody.id }), {
     status: 200,
     headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
   })
