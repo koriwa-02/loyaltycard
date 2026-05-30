@@ -579,11 +579,12 @@ let isUpdatingSelf = false; // prevents Realtime from reacting to our own token 
 
 function startQRLoop() {
   if (qrLoopTimer) clearInterval(qrLoopTimer);
-  // Check every 60s — if token expires in <90s, refresh now
+  // Check every 30s — skip if write is in flight or token has >90s left
   qrLoopTimer = setInterval(() => {
+    if (isUpdatingSelf) return;
     const exp = customer?.qr_expires_at ? new Date(customer.qr_expires_at).getTime() : 0;
     if (exp - Date.now() < 90 * 1000) refreshQRToken();
-  }, 60 * 1000);
+  }, 30 * 1000);
 }
 
 document.addEventListener('visibilitychange', () => {
@@ -649,6 +650,10 @@ function updateStampsUI() {
 
 function subscribeToUpdates() {
   if (!customer?.id) return;
+
+  // Track last known stamps client-side — payload.old is empty without REPLICA IDENTITY FULL
+  let _lastKnownStamps = customer.stamps;
+
   sb.channel('customer-' + customer.id)
     .on('postgres_changes', {
       event: 'UPDATE', schema: 'public', table: 'customers',
@@ -656,20 +661,22 @@ function subscribeToUpdates() {
     }, payload => {
       if (isUpdatingSelf) return; // our own token write — ignore
 
-      // Only react if stamps actually changed — ignore pure token rotations
-      const stampsChanged = payload.old?.stamps !== payload.new?.stamps;
-      if (!stampsChanged) return;
+      const newStamps = payload.new?.stamps;
 
-      // Merge safe fields only — never overwrite qr_token/qr_expires_at from server
+      // If stamps didn't change, it's a token rotation — ignore completely
+      if (newStamps === undefined || newStamps === _lastKnownStamps) return;
+
+      _lastKnownStamps = newStamps;
+
+      // Merge safe fields only — never touch qr_token or qr_expires_at
       const { qr_token, qr_expires_at, ...safeFields } = payload.new;
       customer = { ...customer, ...safeFields };
       if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
 
-      // Update stamp dots and banner
       updateStampsUI();
       loadHistory();
 
-      // Pulse animation — debounced
+      // Debounced pulse animation
       const card = document.getElementById('loyalty-card');
       card.style.transition = 'transform 0.2s ease';
       card.style.transform = 'scale(1.02) translateZ(0)';
