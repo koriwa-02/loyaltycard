@@ -784,54 +784,37 @@ async function submitForm() {
       .single();
 
     if (error) {
-      console.log('INSERT ERROR:', JSON.stringify(error));
       if (error.code === '23505') {
-        // Customer already exists — send OTP and redirect to verify page
-        const phoneVal = document.querySelector('#phone').value.trim();
+        // Customer already exists — send OTP via Supabase Auth (free, no setup)
         const emailVal = document.querySelector('#email')?.value?.trim();
 
-        btn.innerHTML = '<span>Sending verification code...</span>';
-
-        const { data: otpData, error: otpErr } = await sb.rpc('request_verification_code', {
-          p_phone:        phoneVal || null,
-          p_email:        emailVal || null,
-          p_merchant_id:  merchant.id
-        });
-
-        if (otpErr || !otpData?.success) {
-          showError(otpData?.error || 'Account exists but could not send code. Try again.');
+        if (!emailVal) {
+          showError('You already have a card at this shop. Please enter your email to access it.');
           btn.disabled = false;
           btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
           return;
         }
 
-        // Send code via email if email provided
-        if (emailVal && otpData.code) {
-          try {
-            const otpRes = await fetch('https://lvzzcwsttvbaqsnuwdze.supabase.co/functions/v1/send-otp', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME' },
-              body: JSON.stringify({ code: otpData.code, email: emailVal, merchant_name: merchant.name })
-            });
-            const otpJson = await otpRes.json();
-            console.log('send-otp response:', otpRes.status, JSON.stringify(otpJson));
-          } catch(e) {
-            console.error('send-otp fetch error:', e);
-          }
-        } else {
-          console.warn('send-otp skipped — emailVal:', emailVal, 'code:', otpData.code);
+        btn.innerHTML = '<span>Sending verification code...</span>';
+
+        const { error: otpErr } = await sb.auth.signInWithOtp({
+          email: emailVal,
+          options: { shouldCreateUser: false }
+        });
+
+        if (otpErr) {
+          showError('Could not send code: ' + otpErr.message);
+          btn.disabled = false;
+          btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
+          return;
         }
 
         // Redirect to verify page
         const base = window.location.pathname.replace('02_enrollment.html', 'verify_code.html');
         const vParams = new URLSearchParams({
-          cid: otpData.customer_id,
+          email: emailVal,
           mid: merchant.id,
-          ...(otpData.masked_email ? { me: otpData.masked_email } : {}),
-          ...(otpData.masked_phone ? { mp: otpData.masked_phone } : {}),
-          ...(phoneVal ? { phone: phoneVal } : {}),
-          ...(emailVal ? { email: emailVal } : {}),
-          // dev param removed — code sent by email now
+          me: emailVal.slice(0,2) + '****' + emailVal.slice(emailVal.indexOf('@'))
         });
         window.location.href = base + '?' + vParams.toString();
         return;
