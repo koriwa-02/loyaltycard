@@ -1019,7 +1019,8 @@ function renderCustomer(c) {
   }
 
   scanLocked = false;
-  if (window.resumeScan) window.resumeScan(); // restart jsQR loop for next customer
+  // scanPaused stays TRUE here — jsQR loop stays off while cashier uses the action buttons
+  // resumeScan is called after stamp/redeem action completes
 }
 
 // ─────────────────────────────────────────────
@@ -1140,9 +1141,26 @@ async function doAddStamp() {
 // ─────────────────────────────────────────────
 async function doRedeem() {
   if (!currentCustomer) return;
-  if (!confirm(`Confirm: give "${merchant.reward_label}" to ${currentCustomer.name}?`)) return;
 
   const btn = document.querySelector('#btn-redeem');
+
+  // First tap: show confirmation state — avoids confirm() blocking the main thread
+  if (btn.dataset.confirming !== 'true') {
+    btn.dataset.confirming = 'true';
+    btn.querySelector('.action-btn-sub').textContent = 'Tap again to confirm';
+    btn.style.outline = '2px solid #FFB800';
+    setTimeout(() => {
+      btn.dataset.confirming = 'false';
+      btn.querySelector('.action-btn-sub').textContent = merchant?.reward_label || 'Reset to 0';
+      btn.style.outline = '';
+    }, 3000);
+    return;
+  }
+
+  // Second tap: confirmed — reset state and proceed
+  btn.dataset.confirming = 'false';
+  btn.querySelector('.action-btn-sub').textContent = merchant?.reward_label || 'Reset to 0';
+  btn.style.outline = '';
   btn.disabled = true;
   btn.querySelector('.action-btn-icon').innerHTML = '<div class="spinner" style="width:16px;height:16px"></div>';
 
@@ -1218,6 +1236,7 @@ async function doRedeem() {
   }
 
   btn.querySelector('.action-btn-icon').innerHTML = '🎁';
+  setTimeout(() => { if (window.resumeScan) window.resumeScan(); }, 1500);
 }
 
 // ─────────────────────────────────────────────
@@ -1334,6 +1353,7 @@ if (saved) {
 </script>
 </body>
 </html>
+
 
 
 
