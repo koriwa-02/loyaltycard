@@ -654,14 +654,22 @@ function subscribeToUpdates() {
       event: 'UPDATE', schema: 'public', table: 'customers',
       filter: 'id=eq.' + customer.id
     }, payload => {
-      if (isUpdatingSelf) return; // our own write — ignore
-      // Merge only stamp data — never overwrite qr_token/qr_expires_at
+      if (isUpdatingSelf) return; // our own token write — ignore
+
+      // Only react if stamps actually changed — ignore pure token rotations
+      const stampsChanged = payload.old?.stamps !== payload.new?.stamps;
+      if (!stampsChanged) return;
+
+      // Merge safe fields only — never overwrite qr_token/qr_expires_at from server
       const { qr_token, qr_expires_at, ...safeFields } = payload.new;
       customer = { ...customer, ...safeFields };
       if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
+
+      // Update stamp dots and banner
       updateStampsUI();
       loadHistory();
-      // Debounced card pulse — clear any pending animation first
+
+      // Pulse animation — debounced
       const card = document.getElementById('loyalty-card');
       card.style.transition = 'transform 0.2s ease';
       card.style.transform = 'scale(1.02) translateZ(0)';
