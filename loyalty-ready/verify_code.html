@@ -257,7 +257,7 @@ async function resendCode() {
 
   const { error } = await sb.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: false }
+    options: { shouldCreateUser: true }
   });
 
   if (error) {
