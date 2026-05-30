@@ -446,10 +446,10 @@ async function init() {
 
     applyBrand();
     renderCard();
+    generateQR(customer.qr_token); // draw QR once — never auto-refreshed
     loadHistory();
     subscribeToUpdates();
     showMain();
-    startQRLoop();
 
   } catch(e) {
     // Network error — try cache
@@ -502,16 +502,16 @@ function renderCard() {
     banner.style.display = 'none';
   }
 
-  // Refresh QR on first render only — loop handles subsequent refreshes
-  if (!qrLoopTimer) refreshQRToken();
 }
 
 // ── QR CODE ──
-let _qrInstance   = null; // single reusable QRCode instance
-let _qrRendering  = false; // guard against concurrent renders
+// Draw once on load. Never auto-refresh — scanner has 60s grace period.
+// Token rotates server-side on each scan; card reloads naturally on next open.
+let _qrInstance = null;
+let isUpdatingSelf = false;
+let qrLoopTimer = null; // kept for compat, not used
 
 function generateQR(token) {
-  if (_qrRendering) return; // already drawing — skip
   const useToken = token || customer?.qr_token;
   const mid      = merchant?.id;
   if (!useToken || !mid) return;
@@ -519,9 +519,7 @@ function generateQR(token) {
   const qrBox = document.getElementById('qr-box');
   if (!qrBox) return;
 
-  _qrRendering = true;
-
-  // Fully nuke the container and any existing QRCode instance
+  // Destroy old instance cleanly before redraw
   if (_qrInstance) {
     try { _qrInstance.clear(); } catch(e) {}
     _qrInstance = null;
@@ -536,70 +534,14 @@ function generateQR(token) {
       correctLevel: QRCode.CorrectLevel.H
     });
   } catch(e) {
-    qrBox.innerHTML = ''; // clean up partial render
-  } finally {
-    _qrRendering = false;
+    qrBox.innerHTML = '';
   }
 }
 
-async function refreshQRToken() {
-  if (isUpdatingSelf) return; // rotation already in progress — skip
-
-  // Check expiry — only hit the DB if token is actually expired or close to it
-  const exp = customer?.qr_expires_at ? new Date(customer.qr_expires_at).getTime() : 0;
-  if (exp - Date.now() > 90 * 1000) {
-    generateQR(customer?.qr_token);
-    return;
-  }
-
-  if (!navigator.onLine) { generateQR(customer?.qr_token); return; }
-
-  const secret = accessSecret || localStorage.getItem('loyalty_access_secret');
-
-  try {
-    if (secret) {
-      isUpdatingSelf = true;
-      const { data, error } = await sb.rpc('refresh_qr_token', { p_access_secret: secret });
-      if (!error && data?.success) {
-        if (customer) { customer.qr_token = data.token; customer.qr_expires_at = data.expires_at; }
-        generateQR(data.token);
-        if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
-      } else {
-        generateQR(customer?.qr_token);
-      }
-      // Hold lock for 1s — lets Realtime broadcast pass before we accept external updates
-      setTimeout(() => { isUpdatingSelf = false; }, 1000);
-      return;
-    }
-    // Legacy: no secret — just render existing token, scanner has 60s grace period
-    generateQR(customer?.qr_token);
-  } catch(e) {
-    isUpdatingSelf = false;
-    generateQR(customer?.qr_token);
-  }
-}
-
-// ── BACKGROUND REFRESH LOOP ──
-// setInterval survives sleep better than setTimeout.
-// Also check on visibilitychange — phone wake-up / app switch.
-let qrLoopTimer = null;
-let isUpdatingSelf = false; // prevents Realtime from reacting to our own token writes
-
-function startQRLoop() {
-  if (qrLoopTimer) clearInterval(qrLoopTimer);
-  // Check every 30s — skip if write is in flight or token has >90s left
-  qrLoopTimer = setInterval(() => {
-    if (isUpdatingSelf) return;
-    const exp = customer?.qr_expires_at ? new Date(customer.qr_expires_at).getTime() : 0;
-    if (exp - Date.now() < 90 * 1000) refreshQRToken();
-  }, 30 * 1000);
-}
-
+// Visibility change: redraw QR when user returns to tab (no DB call)
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && customer) {
-    // Phone just woke up — check immediately regardless of timer
-    const exp = customer?.qr_expires_at ? new Date(customer.qr_expires_at).getTime() : 0;
-    if (exp - Date.now() < 90 * 1000) refreshQRToken();
+  if (document.visibilityState === 'visible' && customer?.qr_token) {
+    generateQR(customer.qr_token);
   }
 });
 
@@ -754,4 +696,5 @@ init();
 </script>
 </body>
 </html>
+
 
