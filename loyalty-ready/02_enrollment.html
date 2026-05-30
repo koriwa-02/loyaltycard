@@ -785,9 +785,38 @@ async function submitForm() {
 
     if (error) {
       if (error.code === '23505') {
-        // FIX 7: Never expose card_serial or redirect to card on duplicate
-        // Require verified ownership — show message only
-        showError('An account with this phone or email already exists at this shop. Ask the cashier to look you up at the counter.');
+        // Customer already exists — send OTP and redirect to verify page
+        const phoneVal = document.querySelector('#phone').value.trim();
+        const emailVal = document.querySelector('#email')?.value?.trim();
+
+        btn.innerHTML = '<span>Sending verification code...</span>';
+
+        const { data: otpData, error: otpErr } = await sb.rpc('request_verification_code', {
+          p_phone:        phoneVal || null,
+          p_email:        emailVal || null,
+          p_merchant_id:  merchant.id
+        });
+
+        if (otpErr || !otpData?.success) {
+          showError(otpData?.error || 'Account exists but could not send code. Try again.');
+          btn.disabled = false;
+          btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
+          return;
+        }
+
+        // Redirect to verify page
+        const base = window.location.pathname.replace('02_enrollment.html', 'verify_code.html');
+        const vParams = new URLSearchParams({
+          cid: otpData.customer_id,
+          mid: merchant.id,
+          ...(otpData.masked_email ? { me: otpData.masked_email } : {}),
+          ...(otpData.masked_phone ? { mp: otpData.masked_phone } : {}),
+          ...(phoneVal ? { phone: phoneVal } : {}),
+          ...(emailVal ? { email: emailVal } : {}),
+          ...(otpData.code ? { dev: otpData.code } : {}), // dev only
+        });
+        window.location.href = base + '?' + vParams.toString();
+        return;
       } else {
         throw error;
       }
