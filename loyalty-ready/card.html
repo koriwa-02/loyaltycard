@@ -564,12 +564,31 @@ async function refreshTokenSilently() {
     const { data: rows, error } = await sb.rpc('get_card_by_secret', { p_identifier: identifier });
     if (error || !rows || rows.length === 0) return;
     const row = rows[0];
-    if (!row.qr_token) return;
-    if (row.qr_token === lastKnownToken) return; // no change → no redraw
-    lastKnownToken = row.qr_token;
-    customer.qr_token = row.qr_token;
-    customer.qr_expires_at = row.qr_expires_at;
-    generateQR(row.qr_token);
+
+    // 1. Token rotation — redraw QR only if changed
+    if (row.qr_token && row.qr_token !== lastKnownToken) {
+      lastKnownToken = row.qr_token;
+      customer.qr_token = row.qr_token;
+      customer.qr_expires_at = row.qr_expires_at;
+      generateQR(row.qr_token);
+    }
+
+    // 2. Stamp count change — update UI
+    if (typeof row.stamps === 'number' && row.stamps !== customer.stamps) {
+      customer.stamps = row.stamps;
+      customer.lifetime_stamps = row.lifetime_stamps;
+      if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
+      updateStampsUI();
+      loadHistory();
+      // Subtle card pulse on stamp change
+      const card = document.getElementById('loyalty-card');
+      if (card) {
+        card.style.transition = 'transform 0.2s ease';
+        card.style.transform = 'scale(1.02) translateZ(0)';
+        clearTimeout(card._pulseTimer);
+        card._pulseTimer = setTimeout(() => { card.style.transform = 'scale(1) translateZ(0)'; }, 300);
+      }
+    }
   } catch (e) {
     // network blip — try again on next tick, no UI noise
   }
@@ -578,7 +597,7 @@ async function refreshTokenSilently() {
 function startTokenRefreshLoop() {
   lastKnownToken = customer?.qr_token || null;
   if (tokenRefreshTimer) clearInterval(tokenRefreshTimer);
-  tokenRefreshTimer = setInterval(refreshTokenSilently, 4 * 60 * 1000); // every 4 min
+  tokenRefreshTimer = setInterval(refreshTokenSilently, 3000); // every 3 sec — catches stamp scans
 
   // Also refresh when the page becomes visible again (user came back to it)
   document.addEventListener('visibilitychange', () => {
@@ -643,44 +662,11 @@ function updateStampsUI() {
 let localStampsCount = null;
 
 function subscribeToUpdates() {
+  // Realtime requires direct SELECT on customers, which RLS now blocks.
+  // Stamp updates and token rotations are handled by the 3-sec polling loop
+  // in refreshTokenSilently() instead. This function is a no-op for compat.
   if (!customer?.id) return;
-
-  // Initialise from loaded customer data
   localStampsCount = customer.stamps;
-
-  sb.channel('customer-' + customer.id)
-    .on('postgres_changes', {
-      event: 'UPDATE', schema: 'public', table: 'customers',
-      filter: 'id=eq.' + customer.id
-    }, payload => {
-      // Hard dropout 1: our own QR token write — never process
-      if (isUpdatingSelf) return;
-
-      const incomingStamps = payload.new?.stamps;
-
-      // Hard dropout 2: stamps unchanged = token rotation only — ignore completely
-      if (incomingStamps === undefined || incomingStamps === localStampsCount) return;
-
-      // Real stamp event — update tracker first to block any re-entry
-      localStampsCount = incomingStamps;
-
-      // Safe merge: never overwrite qr_token or qr_expires_at
-      const { qr_token, qr_expires_at, ...safeFields } = payload.new;
-      customer = { ...customer, ...safeFields };
-      if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
-
-      // Update stamp dots and reward banner only — QR untouched
-      updateStampsUI();
-      loadHistory();
-
-      // Debounced card pulse
-      const card = document.getElementById('loyalty-card');
-      card.style.transition = 'transform 0.2s ease';
-      card.style.transform = 'scale(1.02) translateZ(0)';
-      clearTimeout(card._pulseTimer);
-      card._pulseTimer = setTimeout(() => { card.style.transform = 'scale(1) translateZ(0)'; }, 300);
-    })
-    .subscribe();
 }
 
 // ── OFFLINE ──
