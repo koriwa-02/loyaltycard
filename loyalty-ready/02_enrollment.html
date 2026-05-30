@@ -536,6 +536,22 @@
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
+
+  .otp-box {
+    width: 42px; height: 52px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+    padding: 0;
+  }
+  .otp-box:focus { border-color: var(--brand); background: #fff; }
 </style>
 </head>
 <body>
@@ -603,9 +619,30 @@
       </label>
     </div>
 
-    <button class="submit-btn" id="submit-btn" onclick="submitForm()">
+    <button class="submit-btn" id="submit-btn" onclick="handlePrimaryBtn()">
       <span id="btn-text">Get my loyalty card</span>
     </button>
+  </div>
+
+  <!-- OTP STEP — hidden until email submitted -->
+  <div id="otp-card" class="form-card" style="display:none;margin-top:16px;">
+    <div class="form-title">Check your email 🔐</div>
+    <div class="form-subtitle" id="otp-sub">We sent a 6-digit code to your email.</div>
+    <div class="error-msg" id="otp-error-msg"></div>
+    <div style="display:flex;gap:8px;justify-content:center;margin:20px 0;">
+      <input class="otp-box" maxlength="1" inputmode="numeric" id="o0">
+      <input class="otp-box" maxlength="1" inputmode="numeric" id="o1">
+      <input class="otp-box" maxlength="1" inputmode="numeric" id="o2">
+      <input class="otp-box" maxlength="1" inputmode="numeric" id="o3">
+      <input class="otp-box" maxlength="1" inputmode="numeric" id="o4">
+      <input class="otp-box" maxlength="1" inputmode="numeric" id="o5">
+    </div>
+    <button class="submit-btn" id="verify-btn" onclick="verifyAndEnroll()">
+      <span id="verify-btn-text">Verify & get my card</span>
+    </button>
+    <div style="text-align:center;margin-top:12px;">
+      <button onclick="resendOTP()" id="resend-btn" style="background:none;border:none;color:var(--brand);font-size:13px;cursor:pointer;font-family:var(--font-body);">Resend code</button>
+    </div>
   </div>
 </div>
 
@@ -731,7 +768,49 @@ async function init() {
 }
 
 // ─────────────────────────────────────────────
-// FORM SUBMIT
+// STATE
+// ─────────────────────────────────────────────
+let pendingEmail = null; // email waiting for OTP verification
+let otpStep = false;     // true = showing OTP input, false = showing form
+
+// ─────────────────────────────────────────────
+// OTP INPUT WIRING
+// ─────────────────────────────────────────────
+function wireOTPBoxes() {
+  const boxes = Array.from(document.querySelectorAll('.otp-box'));
+  boxes.forEach((box, i) => {
+    box.addEventListener('input', e => {
+      const val = e.target.value.replace(/\D/g, '');
+      box.value = val ? val[0] : '';
+      if (val && i < 5) boxes[i + 1].focus();
+      if (boxes.map(b => b.value).join('').length === 6) verifyAndEnroll();
+    });
+    box.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !box.value && i > 0) {
+        boxes[i - 1].value = '';
+        boxes[i - 1].focus();
+      }
+    });
+    box.addEventListener('paste', e => {
+      e.preventDefault();
+      const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+      pasted.split('').forEach((ch, idx) => { if (boxes[idx]) boxes[idx].value = ch; });
+      if (pasted.length === 6) verifyAndEnroll();
+      else boxes[Math.min(pasted.length, 5)].focus();
+    });
+  });
+}
+
+// ─────────────────────────────────────────────
+// PRIMARY BUTTON HANDLER
+// ─────────────────────────────────────────────
+function handlePrimaryBtn() {
+  if (otpStep) return; // safety
+  submitForm();
+}
+
+// ─────────────────────────────────────────────
+// STEP 1 — VALIDATE FORM + SEND OTP (if email given) OR INSERT DIRECTLY
 // ─────────────────────────────────────────────
 async function submitForm() {
   const name     = document.querySelector('#name').value.trim();
@@ -740,22 +819,112 @@ async function submitForm() {
   const birthday = document.querySelector('#birthday').value || null;
   const errEl    = document.querySelector('#error-msg');
   const btn      = document.querySelector('#submit-btn');
-  const btnText  = document.querySelector('#btn-text');
 
   errEl.style.display = 'none';
-
   if (!name) { showError('Please enter your name.'); return; }
   const consent = document.getElementById('consent-check');
   if (consent && !consent.checked) { showError('Please accept the privacy terms to continue.'); return; }
   if (!phone && !email) { showError('Please enter a phone number or email.'); return; }
 
-  // Loading state
   btn.disabled = true;
-  btnText.style.display = 'none';
   btn.innerHTML = '<div class="spinner"></div>';
 
+  // If email provided — send OTP first, verify before inserting
+  if (email) {
+    const { error: otpErr } = await sb.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true }
+    });
+
+    if (otpErr) {
+      showError('Could not send verification code: ' + otpErr.message);
+      btn.disabled = false;
+      btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
+      return;
+    }
+
+    // Show OTP step
+    pendingEmail = email;
+    otpStep = true;
+    document.getElementById('otp-card').style.display = 'block';
+    document.getElementById('otp-sub').textContent =
+      'We sent a 6-digit code to ' + email.slice(0,2) + '****' + email.slice(email.indexOf('@'));
+    btn.disabled = false;
+    btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
+    btn.style.opacity = '0.4';
+    btn.style.pointerEvents = 'none';
+    document.getElementById('o0').focus();
+    return;
+  }
+
+  // No email — insert directly (phone only)
+  await doInsert({ name, phone, email: null, birthday });
+}
+
+// ─────────────────────────────────────────────
+// STEP 2 — VERIFY OTP THEN INSERT
+// ─────────────────────────────────────────────
+async function verifyAndEnroll() {
+  const boxes = Array.from(document.querySelectorAll('.otp-box'));
+  const code  = boxes.map(b => b.value).join('');
+  if (code.length < 6) return;
+
+  const vBtn = document.getElementById('verify-btn');
+  vBtn.disabled = true;
+  vBtn.innerHTML = '<div class="spinner"></div>';
+
+  const otpErrEl = document.getElementById('otp-error-msg');
+  otpErrEl.style.display = 'none';
+
+  const { error } = await sb.auth.verifyOtp({
+    email: pendingEmail,
+    token: code,
+    type:  'email'
+  });
+
+  if (error) {
+    otpErrEl.textContent = 'Invalid or expired code. Try again.';
+    otpErrEl.style.display = 'block';
+    vBtn.disabled = false;
+    vBtn.innerHTML = '<span id="verify-btn-text">Verify & get my card</span>';
+    boxes.forEach(b => b.value = '');
+    boxes[0].focus();
+    return;
+  }
+
+  // Verified — now insert the customer
+  const name     = document.querySelector('#name').value.trim();
+  const phone    = document.querySelector('#phone').value.trim();
+  const birthday = document.querySelector('#birthday').value || null;
+  await doInsert({ name, phone, email: pendingEmail, birthday });
+}
+
+// ─────────────────────────────────────────────
+// RESEND OTP
+// ─────────────────────────────────────────────
+let resendCooldown = 0;
+async function resendOTP() {
+  if (resendCooldown > 0 || !pendingEmail) return;
+  const resendBtn = document.getElementById('resend-btn');
+  resendBtn.disabled = true;
+  await sb.auth.signInWithOtp({ email: pendingEmail, options: { shouldCreateUser: true } });
+  resendCooldown = 60;
+  const cd = setInterval(() => {
+    resendCooldown--;
+    resendBtn.textContent = 'Resend code (' + resendCooldown + 's)';
+    if (resendCooldown <= 0) {
+      clearInterval(cd);
+      resendBtn.textContent = 'Resend code';
+      resendBtn.disabled = false;
+    }
+  }, 1000);
+}
+
+// ─────────────────────────────────────────────
+// CORE INSERT — called after OTP verified (or phone-only)
+// ─────────────────────────────────────────────
+async function doInsert({ name, phone, email, birthday }) {
   try {
-    // Find referrer
     let referredById = null;
     if (referralCode) {
       const { data: referrer } = await sb
@@ -767,17 +936,16 @@ async function submitForm() {
       if (referrer) referredById = referrer.id;
     }
 
-    // Insert customer
     const { data: customer, error } = await sb
       .from('customers')
       .insert({
-        merchant_id:  merchant.id,
+        merchant_id:     merchant.id,
         name,
-        phone:        phone || null,
-        email:        email || null,
-        birthday:     birthday,
-        referred_by:  referredById,
-        stamps:       referredById ? 1 : 0,  // bonus stamp if referred
+        phone:           phone || null,
+        email:           email || null,
+        birthday,
+        referred_by:     referredById,
+        stamps:          referredById ? 1 : 0,
         lifetime_stamps: referredById ? 1 : 0
       })
       .select()
@@ -785,44 +953,23 @@ async function submitForm() {
 
     if (error) {
       if (error.code === '23505') {
-        // Customer already exists — look up by phone or email and redirect to their card
-        const phoneVal = document.querySelector('#phone')?.value?.trim();
-        const emailVal = document.querySelector('#email')?.value?.trim();
-
+        // Already enrolled — find and redirect to their card
         const query = sb.from('customers')
           .select('card_serial, access_secret')
           .eq('merchant_id', merchant.id);
-
-        if (phoneVal) query.eq('phone', phoneVal);
-        else if (emailVal) query.eq('email', emailVal);
-        else {
-          showError('You already have a card here. Enter your phone or email to find it.');
-          btn.disabled = false;
-          btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
-          return;
-        }
-
+        if (phone) query.eq('phone', phone);
+        else if (email) query.eq('email', email);
         const { data: existing } = await query.single();
-
         if (existing) {
           const base  = window.location.pathname.replace('02_enrollment.html', 'card.html');
-          const param = existing.access_secret
-            ? '?secret=' + existing.access_secret
-            : '?id=' + existing.card_serial;
+          const param = existing.access_secret ? '?secret=' + existing.access_secret : '?id=' + existing.card_serial;
           window.location.href = base + param;
           return;
-        } else {
-          showError('Account not found. Contact the shop.');
-          btn.disabled = false;
-          btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
-          return;
         }
-      } else {
-        throw error;
       }
+      throw error;
     }
 
-    // Bonus stamps for referrer (Phase 3: trigger via DB function)
     if (referredById) {
       await sb.rpc('add_stamp', {
         p_customer_id: referredById,
@@ -832,35 +979,27 @@ async function submitForm() {
     }
 
     newCustomer = customer;
-    // FIX 1+3: Store access_secret, not card_serial
     localStorage.setItem('loyalty_access_secret', customer.access_secret);
-    localStorage.setItem('my_card_serial', customer.card_serial); // kept for cache key only
-
-    // Pre-cache data using access_secret as key
+    localStorage.setItem('my_card_serial', customer.card_serial);
     localStorage.setItem('cached_customer_' + customer.access_secret, JSON.stringify({
-      customer: customer,
-      merchant: merchant,
-      cachedAt: Date.now()
+      customer, merchant, cachedAt: Date.now()
     }));
 
-    // Open WhatsApp with card link so customer can save it to themselves
-    const _secret = customer.access_secret || null;
-    const _serial = customer.card_serial || null;
+    const _secret   = customer.access_secret || null;
+    const _serial   = customer.card_serial   || null;
     const _cardParam = _secret ? ('?secret=' + _secret) : (_serial ? ('?id=' + _serial) : '');
-    const cardLink = window.location.origin + window.location.pathname.replace('02_enrollment.html', 'card.html') + _cardParam;
-    const waMsg = encodeURIComponent('🎉 Your loyalty card for ' + merchant.name + ' is ready!\n\nTap this link anytime to check your stamps:\n' + cardLink + '\n\nSave this message so you never lose it!');
-    const waUrl = 'https://wa.me/?text=' + waMsg;
-    
-    setTimeout(() => {
-      window.open(waUrl, '_blank');
-    }, 1000);
-    
+    const cardLink   = window.location.origin + window.location.pathname.replace('02_enrollment.html', 'card.html') + _cardParam;
+    const waMsg      = encodeURIComponent('🎉 Your loyalty card for ' + merchant.name + ' is ready!\n\nTap this link anytime to check your stamps:\n' + cardLink + '\n\nSave this message so you never lose it!');
+    setTimeout(() => { window.open('https://wa.me/?text=' + waMsg, '_blank'); }, 1000);
     showSuccess();
 
   } catch(e) {
     showError('Something went wrong. Please try again.');
+    const btn = document.querySelector('#submit-btn');
     btn.disabled = false;
     btn.innerHTML = '<span id="btn-text">Get my loyalty card</span>';
+    const vBtn = document.getElementById('verify-btn');
+    if (vBtn) { vBtn.disabled = false; vBtn.innerHTML = '<span>Verify & get my card</span>'; }
   }
 }
 
@@ -951,6 +1090,7 @@ async function copyReferral() {
 // BOOT
 // ─────────────────────────────────────────────
 init();
+wireOTPBoxes();
 </script>
 <div id="wa-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:32px 24px;gap:20px;text-align:center;background:#F4F3F0;">
   <div style="font-size:56px">🎉</div>
