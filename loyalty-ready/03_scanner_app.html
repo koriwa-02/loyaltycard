@@ -884,8 +884,12 @@ async function startScanner() {
     await video.play();
     hint.textContent = 'Point camera at customer QR code';
 
+    let scanPaused = false;
+    window.pauseScan  = () => { scanPaused = true; };
+    window.resumeScan = () => { scanPaused = false; };
+
     function tick() {
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      if (!scanPaused && video.readyState === video.HAVE_ENOUGH_DATA) {
         canvas.width  = video.videoWidth;
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -974,6 +978,7 @@ function renderCustomer(c) {
   const idle = document.querySelector('#idle-state');
   card.style.display = 'block';
   idle.style.display = 'none';
+  if (window.pauseScan) window.pauseScan(); // stop heavy jsQR loop while cashier acts
 
   // Avatar
   const initials = c.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
@@ -1016,6 +1021,7 @@ function renderCustomer(c) {
   // Card scrolls into view
   card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   scanLocked = false;
+  if (window.resumeScan) window.resumeScan(); // restart jsQR loop for next customer
 }
 
 // ─────────────────────────────────────────────
@@ -1127,6 +1133,8 @@ async function doAddStamp() {
   }
 
   btn.querySelector('.action-btn-icon').innerHTML = '+';
+  // Resume camera scan loop — cashier ready for next customer
+  setTimeout(() => { if (window.resumeScan) window.resumeScan(); }, 1500);
 }
 
 // ─────────────────────────────────────────────
@@ -1322,4 +1330,5 @@ if (saved) {
 </script>
 </body>
 </html>
+
 
