@@ -507,30 +507,38 @@ function renderCard() {
 }
 
 // ── QR CODE ──
-let _qrRetryCount = 0;
+let _qrInstance   = null; // single reusable QRCode instance
+let _qrRendering  = false; // guard against concurrent renders
+
 function generateQR(token) {
+  if (_qrRendering) return; // already drawing — skip
   const useToken = token || customer?.qr_token;
   const mid      = merchant?.id;
   if (!useToken || !mid) return;
 
   const qrBox = document.getElementById('qr-box');
   if (!qrBox) return;
+
+  _qrRendering = true;
+
+  // Fully nuke the container and any existing QRCode instance
+  if (_qrInstance) {
+    try { _qrInstance.clear(); } catch(e) {}
+    _qrInstance = null;
+  }
   qrBox.innerHTML = '';
 
   try {
-    new QRCode(qrBox, {
+    _qrInstance = new QRCode(qrBox, {
       text: JSON.stringify({ t: useToken, m: mid }),
       width: 200, height: 200,
       colorDark: '#0E0E0E', colorLight: '#FFFFFF',
       correctLevel: QRCode.CorrectLevel.H
     });
-    _qrRetryCount = 0; // success — reset
   } catch(e) {
-    if (_qrRetryCount < 2) {
-      _qrRetryCount++;
-      setTimeout(() => generateQR(useToken), 500);
-    }
-    // else: give up silently — loop will retry in <90s anyway
+    qrBox.innerHTML = ''; // clean up partial render
+  } finally {
+    _qrRendering = false;
   }
 }
 
@@ -648,35 +656,41 @@ function updateStampsUI() {
   }
 }
 
+// Global stamp tracker — source of truth for change detection
+let localStampsCount = null;
+
 function subscribeToUpdates() {
   if (!customer?.id) return;
 
-  // Track last known stamps client-side — payload.old is empty without REPLICA IDENTITY FULL
-  let _lastKnownStamps = customer.stamps;
+  // Initialise from loaded customer data
+  localStampsCount = customer.stamps;
 
   sb.channel('customer-' + customer.id)
     .on('postgres_changes', {
       event: 'UPDATE', schema: 'public', table: 'customers',
       filter: 'id=eq.' + customer.id
     }, payload => {
-      if (isUpdatingSelf) return; // our own token write — ignore
+      // Hard dropout 1: our own QR token write — never process
+      if (isUpdatingSelf) return;
 
-      const newStamps = payload.new?.stamps;
+      const incomingStamps = payload.new?.stamps;
 
-      // If stamps didn't change, it's a token rotation — ignore completely
-      if (newStamps === undefined || newStamps === _lastKnownStamps) return;
+      // Hard dropout 2: stamps unchanged = token rotation only — ignore completely
+      if (incomingStamps === undefined || incomingStamps === localStampsCount) return;
 
-      _lastKnownStamps = newStamps;
+      // Real stamp event — update tracker first to block any re-entry
+      localStampsCount = incomingStamps;
 
-      // Merge safe fields only — never touch qr_token or qr_expires_at
+      // Safe merge: never overwrite qr_token or qr_expires_at
       const { qr_token, qr_expires_at, ...safeFields } = payload.new;
       customer = { ...customer, ...safeFields };
       if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
 
+      // Update stamp dots and reward banner only — QR untouched
       updateStampsUI();
       loadHistory();
 
-      // Debounced pulse animation
+      // Debounced card pulse
       const card = document.getElementById('loyalty-card');
       card.style.transition = 'transform 0.2s ease';
       card.style.transform = 'scale(1.02) translateZ(0)';
