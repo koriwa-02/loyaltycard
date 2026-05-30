@@ -784,6 +784,7 @@ async function submitForm() {
       .single();
 
     if (error) {
+      console.log('INSERT ERROR:', JSON.stringify(error));
       if (error.code === '23505') {
         // Customer already exists — send OTP and redirect to verify page
         const phoneVal = document.querySelector('#phone').value.trim();
