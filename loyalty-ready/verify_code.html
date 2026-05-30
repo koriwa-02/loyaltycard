@@ -201,12 +201,7 @@ if (maskedEmail || maskedPhone) {
     `We sent a <strong>6-digit code</strong> to <strong>${contact}</strong>.<br>Enter it below to access your card.`;
 }
 
-// Dev: show code on screen (remove once email is wired)
-if (devCode) {
-  const devEl = document.getElementById('dev-code');
-  devEl.style.display = 'block';
-  devEl.textContent = '🛠 Dev mode — your code: ' + devCode;
-}
+// Dev code display removed — code sent via email
 
 if (!customerId) {
   document.getElementById('sub-text').textContent = 'Invalid link. Please go back and try again.';
@@ -320,14 +315,16 @@ async function resendCode() {
     return;
   }
 
-  setSuccess('New code sent!');
-
-  // Update dev code if shown
-  if (data.code) {
-    const devEl = document.getElementById('dev-code');
-    devEl.style.display = 'block';
-    devEl.textContent = '🛠 Dev mode — your code: ' + data.code;
+  // Send via email
+  if (email && data.code) {
+    await fetch('https://lvzzcwsttvbaqsnuwdze.supabase.co/functions/v1/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2enpjd3N0dHZiYXFzbnV3ZHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzAxMzAsImV4cCI6MjA5NTI0NjEzMH0.fzNUc8OaxdqZk9HClggQuA-9l0mHrabA36Pa4AJ7dME' },
+      body: JSON.stringify({ code: data.code, email, merchant_name: params.get('mn') || '' })
+    }).catch(() => {});
   }
+
+  setSuccess('New code sent to your email!');
 
   // 60s cooldown
   resendCooldown = 60;
