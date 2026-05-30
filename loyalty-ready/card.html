@@ -538,12 +538,7 @@ function generateQR(token) {
   }
 }
 
-// Visibility change: redraw QR when user returns to tab (no DB call)
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && customer?.qr_token) {
-    generateQR(customer.qr_token);
-  }
-});
+// visibilitychange: intentionally removed — QR redraw on tab switch caused flicker
 
 // ── HISTORY ──
 async function loadHistory() {
@@ -656,7 +651,7 @@ function updateOfflineBanner() {
     text.textContent = 'Back online — syncing...';
     banner.classList.add('show');
     setTimeout(() => banner.classList.remove('show'), 2500);
-    init(); // re-fetch fresh data
+    // Don't call init() — it creates duplicate Realtime subscriptions
   }
 }
 
@@ -696,5 +691,6 @@ init();
 </script>
 </body>
 </html>
+
 
 
