@@ -468,7 +468,8 @@ async function init() {
 
     applyBrand();
     renderCard();
-    generateQR(customer.qr_token); // draw QR once — never auto-refreshed
+    generateQR(customer.qr_token);
+    startTokenRefreshLoop();
     loadHistory();
     subscribeToUpdates();
     showMain();
@@ -561,6 +562,42 @@ function generateQR(token) {
 }
 
 // visibilitychange: intentionally removed — QR redraw on tab switch caused flicker
+
+// ── TOKEN REFRESH LOOP ──
+// Quietly poll Supabase for the latest qr_token every 4 minutes (tokens expire in 5).
+// Only redraw the QR if the token value actually changed — prevents flicker.
+let lastKnownToken = null;
+let tokenRefreshTimer = null;
+
+async function refreshTokenSilently() {
+  try {
+    if (!customer?.id) return;
+    const { data, error } = await sb
+      .from('customers')
+      .select('qr_token, qr_expires_at')
+      .eq('id', customer.id)
+      .single();
+    if (error || !data || !data.qr_token) return;
+    if (data.qr_token === lastKnownToken) return; // no change → no redraw
+    lastKnownToken = data.qr_token;
+    customer.qr_token = data.qr_token;
+    customer.qr_expires_at = data.qr_expires_at;
+    generateQR(data.qr_token);
+  } catch (e) {
+    // network blip — try again on next tick, no UI noise
+  }
+}
+
+function startTokenRefreshLoop() {
+  lastKnownToken = customer?.qr_token || null;
+  if (tokenRefreshTimer) clearInterval(tokenRefreshTimer);
+  tokenRefreshTimer = setInterval(refreshTokenSilently, 4 * 60 * 1000); // every 4 min
+
+  // Also refresh when the page becomes visible again (user came back to it)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshTokenSilently();
+  });
+}
 
 // ── HISTORY ──
 async function loadHistory() {
