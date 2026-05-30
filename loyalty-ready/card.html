@@ -549,7 +549,9 @@ async function refreshQRToken() {
 
   try {
     if (secret) {
+      isUpdatingSelf = true;
       const { data, error } = await sb.rpc('refresh_qr_token', { p_access_secret: secret });
+      isUpdatingSelf = false;
       if (!error && data?.success) {
         if (customer) { customer.qr_token = data.token; customer.qr_expires_at = data.expires_at; }
         generateQR(data.token);
@@ -568,6 +570,7 @@ async function refreshQRToken() {
 // setInterval survives sleep better than setTimeout.
 // Also check on visibilitychange — phone wake-up / app switch.
 let qrLoopTimer = null;
+let isUpdatingSelf = false; // prevents Realtime from reacting to our own token writes
 
 function startQRLoop() {
   if (qrLoopTimer) clearInterval(qrLoopTimer);
@@ -646,8 +649,8 @@ function subscribeToUpdates() {
       event: 'UPDATE', schema: 'public', table: 'customers',
       filter: 'id=eq.' + customer.id
     }, payload => {
+      if (isUpdatingSelf) return; // our own write — ignore
       // Merge only stamp data — never overwrite qr_token/qr_expires_at
-      // (stamp RPC rotates the token server-side; card manages its own QR lifecycle)
       const { qr_token, qr_expires_at, ...safeFields } = payload.new;
       customer = { ...customer, ...safeFields };
       if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
