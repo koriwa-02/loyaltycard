@@ -646,14 +646,19 @@ function subscribeToUpdates() {
       event: 'UPDATE', schema: 'public', table: 'customers',
       filter: 'id=eq.' + customer.id
     }, payload => {
-      customer = { ...customer, ...payload.new };
+      // Merge only stamp data — never overwrite qr_token/qr_expires_at
+      // (stamp RPC rotates the token server-side; card manages its own QR lifecycle)
+      const { qr_token, qr_expires_at, ...safeFields } = payload.new;
+      customer = { ...customer, ...safeFields };
       if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
-      // Update UI without touching QR — renderCard() would restart the loop and flicker QR
       updateStampsUI();
       loadHistory();
+      // Debounced card pulse — clear any pending animation first
       const card = document.getElementById('loyalty-card');
+      card.style.transition = 'transform 0.2s ease';
       card.style.transform = 'scale(1.02) translateZ(0)';
-      setTimeout(() => card.style.transform = 'scale(1) translateZ(0)', 300);
+      clearTimeout(card._pulseTimer);
+      card._pulseTimer = setTimeout(() => { card.style.transform = 'scale(1) translateZ(0)'; }, 300);
     })
     .subscribe();
 }
