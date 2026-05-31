@@ -1043,6 +1043,7 @@ async function doAddStamp() {
     }
 
     if (cashier?.sessionToken) {
+      // Authenticated cashier — use session-based RPC
       try {
         ({ data, error } = await resilientRPC(() => sb.rpc('add_stamp_by_token', {
           p_qr_token:        currentCustomer._token,
@@ -1050,7 +1051,6 @@ async function doAddStamp() {
           p_merchant_id:     merchant.id
         })));
       } catch (netErr) {
-        // Network totally down — queue for retry
         enqueueStamp({
           qr_token:      currentCustomer._token,
           sessionToken:  cashier.sessionToken,
@@ -1063,33 +1063,20 @@ async function doAddStamp() {
         return;
       }
     } else {
-      // Fallback: use get_customer_by_qr_token then update directly
-      const newToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
-      const { error: e1 } = await sb
-        .from('customers')
-        .update({
-          stamps: currentCustomer.stamps + merchant.points_per_visit,
-          lifetime_stamps: currentCustomer.lifetime_stamps + merchant.points_per_visit,
-          qr_token: newToken,
-          qr_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
-        })
-        .eq('qr_token', currentCustomer._token)
-        .eq('merchant_id', merchant.id);
-      error = e1;
-      if (!error) {
-        await sb.from('scan_events').insert({
-          merchant_id: merchant.id,
-          customer_id: currentCustomer.id,
-          action: 'add_stamp',
-          stamps_delta: merchant.points_per_visit
-        });
-        data = {
-          success: true,
-          stamps: currentCustomer.stamps + merchant.points_per_visit,
-          total_needed: merchant.total_stamps,
-          reward_ready: (currentCustomer.stamps + merchant.points_per_visit) >= merchant.total_stamps,
-          reward_label: merchant.reward_label
-        };
+      // Demo mode / cashier without session — use cashier_id-based RPC
+      // (No more direct UPDATE — RLS blocks it and used to silently fake success)
+      try {
+        ({ data, error } = await resilientRPC(() => sb.rpc('add_stamp_by_token', {
+          p_token:       currentCustomer._token,
+          p_cashier_id:  cashier?.id || null,
+          p_merchant_id: merchant.id
+        })));
+      } catch (netErr) {
+        toast('Network error — try again', 'error');
+        btn.disabled = false;
+        btn.querySelector('.action-btn-icon').innerHTML = '+';
+        scanLocked = false;
+        return;
       }
     }
 
