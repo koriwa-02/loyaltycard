@@ -1177,21 +1177,17 @@ async function doRedeem() {
         return;
       }
     } else {
-      // Fallback: reset stamps + rotate token in one write so card gets one clean Realtime event
-      const newToken = crypto.randomUUID();
-      const { error: e1 } = await sb
-        .from('customers')
-        .update({ stamps: 0, qr_token: newToken, qr_expires_at: new Date(Date.now() + 5*60*1000).toISOString() })
-        .eq('id', customerId)
-        .eq('merchant_id', merchant.id);
-      error = e1;
-      if (!error) {
-        await sb.from('scan_events').insert({
-          merchant_id: merchant.id,
-          customer_id: customerId,
-          action: 'redeem_reward',
-          stamps_delta: 0
-        });
+      // Demo mode / cashier without session — use cashier_id-based RPC
+      ({ data, error } = await resilientRPC(() => sb.rpc('redeem_reward_by_id', {
+        p_customer_id:  customerId,
+        p_cashier_id:   cashier?.id || null,
+        p_merchant_id:  merchant.id
+      })));
+      if (!error && !data?.success) {
+        toast('Redemption blocked: ' + (data?.error || 'unknown reason'), 'error');
+        btn.disabled = false;
+        btn.querySelector('.action-btn-icon').innerHTML = '🎁';
+        return;
       }
     }
 
