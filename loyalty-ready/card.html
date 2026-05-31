@@ -78,14 +78,6 @@
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes brandFlow {
-    0%   { background-position: 0% 50%; }
-    100% { background-position: 100% 50%; }
-  }
-  .brand-flow {
-    background-size: 200% 200% !important;
-    animation: brandFlow 10s ease-in-out infinite alternate;
-  }
   .loyalty-card {
     width: calc(100% - 32px);
     max-width: 400px;
@@ -492,22 +484,6 @@ function applyBrand() {
   document.documentElement.style.setProperty('--brand', merchant.brand_color);
 }
 
-// Shift a hex color brighter (+) or darker (-) by N percent.
-// Used to derive accent/highlight stops for animated gradient.
-function shiftHex(hex, pct) {
-  let h = hex.replace('#','');
-  if (h.length === 3) h = h.split('').map(c => c+c).join('');
-  const num = parseInt(h, 16);
-  const amt = Math.round(2.55 * pct);
-  let r = (num >> 16) + amt;
-  let g = ((num >> 8) & 0xff) + amt;
-  let b = (num & 0xff) + amt;
-  r = Math.max(0, Math.min(255, r));
-  g = Math.max(0, Math.min(255, g));
-  b = Math.max(0, Math.min(255, b));
-  return '#' + ((r<<16)|(g<<8)|b).toString(16).padStart(6,'0');
-}
-
 // ── RENDER ──
 function renderCard() {
   const c = customer, m = merchant;
@@ -518,13 +494,7 @@ function renderCard() {
   document.getElementById('c-name').textContent  = c.name;
   document.getElementById('c-reward').textContent= m.reward_label;
   document.getElementById('c-count').textContent = c.stamps + ' / ' + m.total_stamps;
-  // Smooth animated brand gradient — two close-value tones flowing diagonally
-  const brand  = m.brand_color || '#1D9E75';
-  const darker = m.accent_color || shiftHex(brand, -22);
-  const lighter = shiftHex(brand, +12);
-  const card = document.getElementById('loyalty-card');
-  card.style.background = `linear-gradient(135deg, ${darker}, ${brand}, ${lighter})`;
-  card.classList.add('brand-flow');
+  document.getElementById('loyalty-card').style.background = m.brand_color;
 
   const grid = document.getElementById('c-stamps');
   grid.innerHTML = '';
