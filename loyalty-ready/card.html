@@ -80,12 +80,11 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes brandFlow {
     0%   { background-position: 0% 50%; }
-    50%  { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
   }
   .brand-flow {
-    background-size: 300% 300% !important;
-    animation: brandFlow 12s ease infinite;
+    background-size: 200% 200% !important;
+    animation: brandFlow 10s ease-in-out infinite alternate;
   }
   .loyalty-card {
     width: calc(100% - 32px);
@@ -519,12 +518,12 @@ function renderCard() {
   document.getElementById('c-name').textContent  = c.name;
   document.getElementById('c-reward').textContent= m.reward_label;
   document.getElementById('c-count').textContent = c.stamps + ' / ' + m.total_stamps;
-  // Animated brand gradient — uses merchant.accent_color if set, else darkens brand_color
+  // Smooth animated brand gradient — two close-value tones flowing diagonally
   const brand  = m.brand_color || '#1D9E75';
-  const accent = m.accent_color || shiftHex(brand, -28);
-  const lighter = shiftHex(brand, +15);
+  const darker = m.accent_color || shiftHex(brand, -22);
+  const lighter = shiftHex(brand, +12);
   const card = document.getElementById('loyalty-card');
-  card.style.background = `linear-gradient(135deg, ${accent} 0%, ${brand} 45%, ${lighter} 70%, ${brand} 100%)`;
+  card.style.background = `linear-gradient(135deg, ${darker}, ${brand}, ${lighter})`;
   card.classList.add('brand-flow');
 
   const grid = document.getElementById('c-stamps');
