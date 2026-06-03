@@ -418,6 +418,19 @@
 
   .action-btn-icon.stamp { background: var(--success-bg); }
   .action-btn-icon.redeem { background: rgba(255,175,0,0.12); }
+  .action-btn-icon.claim { background: linear-gradient(135deg, #FFD166, #FF9F1C); color: #fff; }
+  .claim-btn {
+    background: linear-gradient(135deg, #FFF8E7 0%, #FFEFC1 100%);
+    border: 1.5px solid #FFD166;
+    box-shadow: 0 6px 20px rgba(255, 200, 50, 0.25);
+    animation: claimPulse 2s ease-in-out infinite;
+  }
+  @keyframes claimPulse {
+    0%, 100% { box-shadow: 0 6px 20px rgba(255, 200, 50, 0.25); }
+    50%      { box-shadow: 0 10px 32px rgba(255, 200, 50, 0.55); }
+  }
+  .claim-btn .action-btn-label { color: #92600A; }
+  .claim-btn .action-btn-sub { color: #B07A20; }
 
   .action-btn-label {
     font-size: 13px;
@@ -677,6 +690,12 @@
       </div>
 
       <div class="action-buttons">
+        <!-- Tier claim CTA — shown only when customer locked at a tier -->
+        <button class="action-btn claim-btn" id="btn-claim-tier" onclick="doClaimTier()" style="display:none;">
+          <div class="action-btn-icon claim">🎁</div>
+          <div class="action-btn-label">Claim <span id="claim-tier-label"></span></div>
+          <div class="action-btn-sub">Customer must claim to keep stamping</div>
+        </button>
         <button class="action-btn" id="btn-add-stamp" onclick="doAddStamp()">
           <div class="action-btn-icon stamp">+</div>
           <div class="action-btn-label">Add stamp</div>
@@ -961,6 +980,7 @@ async function onQRScanned(rawQR) {
 
     currentCustomer = customer;
     renderCustomer(customer);
+    await checkTierGate();
     toast('Found: ' + customer.name, 'success');
     if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
 
@@ -1021,6 +1041,82 @@ function renderCustomer(c) {
   scanLocked = false;
   // scanPaused stays TRUE here — jsQR loop stays off while cashier uses the action buttons
   // resumeScan is called after stamp/redeem action completes
+}
+
+// ─────────────────────────────────────────────
+// TIER GATE — checks if customer is locked at a tier
+// ─────────────────────────────────────────────
+async function checkTierGate() {
+  if (!currentCustomer) return;
+  const claimBtn = document.getElementById('btn-claim-tier');
+  const stampBtn = document.getElementById('btn-add-stamp');
+  claimBtn.style.display = 'none';
+  stampBtn.disabled = false;
+  stampBtn.style.opacity = '1';
+
+  const tiers = merchant?.reward_tiers;
+  if (!tiers || !Array.isArray(tiers) || tiers.length === 0) return;
+
+  try {
+    const { data: idx } = await sb.rpc('get_locked_tier_index', { p_customer_id: currentCustomer.id });
+    if (typeof idx === 'number' && idx >= 0 && tiers[idx]) {
+      const tier = tiers[idx];
+      currentCustomer._lockedTierIndex = idx;
+      document.getElementById('claim-tier-label').textContent = tier.label;
+      claimBtn.style.display = 'flex';
+      stampBtn.disabled = true;
+      stampBtn.style.opacity = '0.35';
+    } else {
+      currentCustomer._lockedTierIndex = -1;
+    }
+  } catch(e) {
+    // Network blip — fail open (allow stamps as before)
+    currentCustomer._lockedTierIndex = -1;
+  }
+}
+
+// ─────────────────────────────────────────────
+// CLAIM TIER
+// ─────────────────────────────────────────────
+async function doClaimTier() {
+  if (!currentCustomer || typeof currentCustomer._lockedTierIndex !== 'number' || currentCustomer._lockedTierIndex < 0) return;
+  const btn = document.getElementById('btn-claim-tier');
+  btn.disabled = true;
+  btn.querySelector('.action-btn-icon').innerHTML = '<div class="spinner" style="width:16px;height:16px"></div>';
+
+  try {
+    const { data, error } = await sb.rpc('claim_tier', {
+      p_customer_id: currentCustomer.id,
+      p_tier_index:  currentCustomer._lockedTierIndex,
+      p_cashier_id:  cashier?.id || null,
+      p_merchant_id: merchant.id
+    });
+
+    if (error) throw error;
+    if (data && data.success === false) throw new Error(data.error || 'Claim failed');
+
+    toast('✓ ' + (data.tier_label || 'Tier claimed') + (data.is_final ? ' — cycle reset' : ''), 'success');
+    if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+
+    // Refresh customer state: re-fetch + re-render
+    if (currentCustomer._token) {
+      const { data: fresh } = await sb.rpc('get_customer_by_qr_token', {
+        p_token: currentCustomer._token,
+        p_merchant_id: merchant.id
+      });
+      if (fresh?.success) {
+        currentCustomer = { ...fresh, _token: currentCustomer._token };
+        renderCustomer(currentCustomer);
+      }
+    }
+    await checkTierGate();
+    addLogItem(currentCustomer.name, 'claim', data.tier_label || 'Tier');
+  } catch(e) {
+    toast(e.message || 'Failed to claim tier', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.querySelector('.action-btn-icon').innerHTML = '🎁';
+  }
 }
 
 // ─────────────────────────────────────────────
