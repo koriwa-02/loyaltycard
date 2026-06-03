@@ -137,6 +137,96 @@
   .reward-banner-icon { font-size: 28px; }
   .reward-banner-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: #92600A; }
   .reward-banner-sub { font-size: 12px; color: #B07A20; margin-top: 2px; font-weight: 300; }
+
+  /* TIER CLAIM BANNER — shown when at a locked tier */
+  .tier-claim-banner {
+    display: none;
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 12px;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, #FFF8E7 0%, #FFEFC1 100%);
+    border: 1.5px solid #FFD166;
+    border-radius: 18px;
+    gap: 14px;
+    align-items: center;
+    box-shadow: 0 6px 24px rgba(255, 200, 50, 0.25);
+    animation: tierPulse 2s ease-in-out infinite;
+  }
+  @keyframes tierPulse {
+    0%, 100% { box-shadow: 0 6px 24px rgba(255, 200, 50, 0.25); }
+    50%      { box-shadow: 0 10px 36px rgba(255, 200, 50, 0.55); }
+  }
+  .tier-claim-icon { font-size: 32px; flex-shrink: 0; }
+  .tier-claim-content { flex: 1; }
+  .tier-claim-title {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 700;
+    color: #92600A;
+    line-height: 1.3;
+  }
+  .tier-claim-sub {
+    font-size: 12px; color: #B07A20;
+    margin-top: 4px; font-weight: 300; line-height: 1.4;
+  }
+
+  /* TIERS LIST CARD */
+  .tiers-card {
+    display: none;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    width: calc(100% - 32px);
+    max-width: 400px;
+    margin-top: 12px;
+    padding: 18px 20px;
+  }
+  .tiers-title {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(14,14,14,0.45);
+    margin-bottom: 14px;
+  }
+  .tiers-list { display: flex; flex-direction: column; gap: 10px; }
+  .tier-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(0,0,0,0.025);
+    transition: all 0.2s ease;
+  }
+  .tier-row.tier-claimable {
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.18), rgba(255, 200, 50, 0.06));
+    border: 1.5px solid #FFD166;
+  }
+  .tier-row.tier-claimed {
+    background: rgba(29, 158, 117, 0.08);
+    opacity: 0.7;
+  }
+  .tier-row.tier-locked { opacity: 0.5; }
+  .tier-icon {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: rgba(14,14,14,0.05);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .tier-row.tier-claimable .tier-icon { background: #FFD166; }
+  .tier-row.tier-claimed .tier-icon { background: #1D9E75; color: #fff; }
+  .tier-info { flex: 1; min-width: 0; }
+  .tier-label {
+    font-size: 14px; font-weight: 600;
+    color: #0E0E0E; line-height: 1.3;
+  }
+  .tier-status {
+    font-size: 11px; color: rgba(14,14,14,0.5);
+    margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .tier-row.tier-claimable .tier-status { color: #92600A; font-weight: 700; }
+  .tier-row.tier-claimed .tier-status { color: #1D9E75; }
   .qr-card {
     background: var(--card-bg);
     border-radius: 20px;
@@ -371,6 +461,21 @@
     </div>
   </div>
 
+  <!-- TIER CLAIM BANNER (shows only when at a locked tier) -->
+  <div class="tier-claim-banner" id="tier-claim-banner">
+    <div class="tier-claim-icon">🎁</div>
+    <div class="tier-claim-content">
+      <div class="tier-claim-title" id="tier-claim-title"></div>
+      <div class="tier-claim-sub">Show this card to the cashier to claim and continue collecting stamps.</div>
+    </div>
+  </div>
+
+  <!-- TIERS LIST (always visible if tiers configured) -->
+  <div class="tiers-card" id="tiers-card">
+    <div class="tiers-title">Rewards</div>
+    <div class="tiers-list" id="tiers-list"></div>
+  </div>
+
   <div class="qr-card">
     <div class="qr-label">Show this QR to the cashier<br><strong>at every visit</strong></div>
     <div id="qr-box"></div>
@@ -542,7 +647,7 @@ async function init() {
     if (data.merchant_id) {
       const { data: m } = await sb
         .from('merchants')
-        .select('id, name, slug, brand_color, stamp_emoji, total_stamps, reward_label, points_per_visit')
+        .select('id, name, slug, brand_color, stamp_emoji, total_stamps, reward_label, points_per_visit, reward_tiers')
         .eq('id', data.merchant_id)
         .single();
       merchantData = m;
@@ -559,6 +664,7 @@ async function init() {
       created_at:     data.created_at,
       qr_token:       data.qr_token,
       qr_expires_at:  data.qr_expires_at,
+      claimed_tiers:  data.claimed_tiers || 0,
     };
     merchant = merchantData;
 
@@ -567,6 +673,7 @@ async function init() {
 
     applyBrand();
     renderCard();
+    renderTiers();
     generateQR(customer.qr_token);
     startTokenRefreshLoop();
     loadHistory();
@@ -684,12 +791,16 @@ async function refreshTokenSilently() {
       generateQR(row.qr_token);
     }
 
-    // 2. Stamp count change — update UI
-    if (typeof row.stamps === 'number' && row.stamps !== customer.stamps) {
+    // 2. Stamp count or claimed_tiers change — update UI
+    const stampsChanged = typeof row.stamps === 'number' && row.stamps !== customer.stamps;
+    const claimsChanged = typeof row.claimed_tiers === 'number' && row.claimed_tiers !== customer.claimed_tiers;
+    if (stampsChanged || claimsChanged) {
       customer.stamps = row.stamps;
       customer.lifetime_stamps = row.lifetime_stamps;
+      customer.claimed_tiers = row.claimed_tiers || 0;
       if (cacheKey) localStorage.setItem('cached_customer_' + cacheKey, JSON.stringify({ customer, merchant }));
       updateStampsUI();
+      renderTiers();
       loadHistory();
       // Subtle card pulse on stamp change
       const card = document.getElementById('loyalty-card');
@@ -702,6 +813,64 @@ async function refreshTokenSilently() {
     }
   } catch (e) {
     // network blip — try again on next tick, no UI noise
+  }
+}
+
+// ── TIER LIST + CLAIM BANNER RENDER ──
+function renderTiers() {
+  const tiers = merchant?.reward_tiers;
+  const tiersCard = document.getElementById('tiers-card');
+  const claimBanner = document.getElementById('tier-claim-banner');
+
+  if (!tiers || !Array.isArray(tiers) || tiers.length === 0) {
+    tiersCard.style.display = 'none';
+    claimBanner.style.display = 'none';
+    return;
+  }
+  tiersCard.style.display = 'block';
+
+  const list = document.getElementById('tiers-list');
+  list.innerHTML = '';
+  let lockedTier = null;
+  const claimedMask = customer.claimed_tiers || 0;
+
+  tiers.forEach((tier, idx) => {
+    const tierAt = parseInt(tier.at);
+    const isClaimed = (claimedMask & (1 << idx)) !== 0;
+    const isLocked = customer.stamps === tierAt && !isClaimed;
+
+    let state, statusLabel;
+    if (isClaimed) {
+      state = 'claimed'; statusLabel = '✓ Claimed';
+    } else if (isLocked) {
+      state = 'claimable'; statusLabel = 'Ready to claim!';
+      lockedTier = { ...tier, idx };
+    } else if (customer.stamps > tierAt) {
+      // Past the tier but somehow not claimed — shouldn't happen with gate, but treat as claimable
+      state = 'claimable'; statusLabel = 'Ready to claim!';
+      lockedTier = { ...tier, idx };
+    } else {
+      state = 'locked'; statusLabel = 'at ' + tierAt + ' stamps';
+    }
+
+    const row = document.createElement('div');
+    row.className = 'tier-row tier-' + state;
+    const icon = tier.is_final ? '🏆' : '🎁';
+    const safeLabel = (tier.label || 'Reward').replace(/</g, '&lt;');
+    row.innerHTML =
+      '<div class="tier-icon">' + icon + '</div>' +
+      '<div class="tier-info">' +
+        '<div class="tier-label">' + safeLabel + '</div>' +
+        '<div class="tier-status">' + statusLabel + '</div>' +
+      '</div>';
+    list.appendChild(row);
+  });
+
+  if (lockedTier) {
+    document.getElementById('tier-claim-title').textContent = 'You earned: ' + lockedTier.label;
+    claimBanner.style.display = 'flex';
+  } else {
+    claimBanner.style.display = 'none';
   }
 }
 
