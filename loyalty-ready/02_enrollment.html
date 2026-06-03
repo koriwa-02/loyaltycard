@@ -663,7 +663,7 @@
   <!-- Referral box -->
   <div class="referral-box" style="width:calc(100% - 32px);max-width:420px;" id="referral-box">
     <div class="referral-box-title">🎁 Invite friends, earn stamps</div>
-    <div class="referral-box-sub">Share your link. Every friend who joins earns you 2 bonus stamps.</div>
+    <div class="referral-box-sub">Share your link. You get +1 stamp every time a friend actually visits.</div>
     <div class="referral-link-row">
       <input class="referral-link-input" id="referral-link-input" readonly>
       <button class="copy-btn" onclick="copyReferral()">Copy</button>
@@ -815,17 +815,11 @@ async function doInsert({ name, phone, email, birthday }) {
       throw error;
     }
 
-    if (referredById) {
-      await sb.rpc('add_stamp', {
-        p_customer_id: referredById,
-        p_cashier_id: null,
-        p_merchant_id: merchant.id
-      });
-    }
+    // Referral bonus is now handled server-side inside add_stamp_by_token
+    // on the referred customer's first cashier-issued stamp. No client RPC needed.
 
     newCustomer = customer;
-    localStorage.setItem('loyalty_access_secret', customer.access_secret);
-    localStorage.setItem('my_card_serial', customer.card_serial);
+    // Cache for offline support — keyed by secret so it's per-customer and safe
     localStorage.setItem('cached_customer_' + customer.access_secret, JSON.stringify({
       customer, merchant, cachedAt: Date.now()
     }));
