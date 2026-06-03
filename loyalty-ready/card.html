@@ -203,18 +203,119 @@
     color: var(--ink-muted);
     cursor: pointer;
   }
-  .ios-hint {
+  .install-link {
     display: none;
-    width: calc(100% - 32px);
-    max-width: 400px;
     margin-top: 12px;
-    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--brand);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    text-decoration: underline;
+    padding: 4px 8px;
+  }
+  .install-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(14,14,14,0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .install-overlay.visible { display: block; opacity: 1; }
+  .install-sheet {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: #fff;
+    border-radius: 24px 24px 0 0;
+    padding: 24px 24px 32px;
+    max-width: 480px;
+    margin: 0 auto;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+  }
+  .install-overlay.visible .install-sheet { transform: translateY(0); }
+  .install-handle {
+    width: 36px; height: 4px;
+    background: rgba(0,0,0,0.15);
+    border-radius: 2px;
+    margin: 0 auto 18px;
+  }
+  .install-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: #0E0E0E;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+  }
+  .install-sub {
+    font-size: 13px;
+    color: rgba(14,14,14,0.55);
+    margin-bottom: 22px;
+    line-height: 1.5;
+  }
+  .install-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .install-step-num {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .install-step-text {
+    font-size: 14px;
+    color: #0E0E0E;
+    line-height: 1.5;
+    padding-top: 4px;
+  }
+  .install-step-text strong { font-weight: 700; }
+  .install-step-text .icon-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 6px;
+    vertical-align: -6px;
+    margin: 0 2px;
+  }
+  .install-close {
+    width: 100%;
+    margin-top: 10px;
+    padding: 14px;
     background: #0E0E0E;
+    color: #fff;
+    border: none;
     border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .install-close-secondary {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    background: transparent;
+    color: rgba(14,14,14,0.5);
+    border: none;
     font-size: 12px;
-    color: rgba(255,255,255,0.7);
-    text-align: center;
-    line-height: 1.6;
+    cursor: pointer;
+    font-family: inherit;
   }
   .not-found {
     display: flex;
@@ -291,8 +392,18 @@
 
   <button class="share-btn" onclick="shareReferral()">🎁 Invite a friend — earn bonus stamps</button>
 
-  <div class="ios-hint" id="ios-hint">
-    Tap <strong style="color:#fff">Share</strong> then <strong style="color:#fff">"Add to Home Screen"</strong>
+  <button class="install-link" id="install-link" onclick="openInstallGuide()">📱 Save this card to my home screen</button>
+</div>
+
+<!-- INSTALL GUIDE — bottom sheet -->
+<div class="install-overlay" id="install-overlay" onclick="if(event.target.id==='install-overlay')closeInstallGuide()">
+  <div class="install-sheet">
+    <div class="install-handle"></div>
+    <div class="install-title">Save your card 📱</div>
+    <div class="install-sub" id="install-sub">Add it to your home screen for instant access — no app store needed.</div>
+    <div id="install-steps"></div>
+    <button class="install-close" onclick="closeInstallGuide()">Got it</button>
+    <button class="install-close-secondary" onclick="closeInstallGuide(true)">Don't show this again</button>
   </div>
 </div>
 
@@ -708,9 +819,62 @@ function shareReferral() {
   }
 }
 
-// ── iOS HOME SCREEN HINT ──
-if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !window.matchMedia('(display-mode: standalone)').matches) {
-  document.getElementById('ios-hint').style.display = 'block';
+// ── INSTALL GUIDE ──
+// Show a bottom-sheet that teaches users how to add the card to their home screen.
+// Detects iOS vs Android, only shows on first visit (per browser), dismissible.
+(function setupInstallGuide() {
+  const inStandalone = window.matchMedia('(display-mode: standalone)').matches
+                     || window.navigator.standalone === true;
+  if (inStandalone) return; // already installed, nothing to teach
+
+  const ua = navigator.userAgent.toLowerCase();
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+  const isAndroid = /android/.test(ua);
+  if (!isIOS && !isAndroid) return; // desktop — Add to Home Screen isn't a thing
+
+  // Show the persistent link button to all eligible mobile users
+  document.getElementById('install-link').style.display = 'inline-block';
+
+  // Build the steps content based on platform
+  const stepsEl = document.getElementById('install-steps');
+  const subEl   = document.getElementById('install-sub');
+  let steps;
+  if (isIOS) {
+    subEl.textContent = 'On iPhone with Safari — three quick taps:';
+    steps = [
+      'Tap the <strong>Share</strong> button <span class="icon-inline">⎋</span> at the bottom of Safari',
+      'Scroll down and tap <strong>"Add to Home Screen"</strong> <span class="icon-inline">＋</span>',
+      'Tap <strong>Add</strong> in the top right corner'
+    ];
+  } else {
+    subEl.textContent = 'On Android with Chrome — three quick taps:';
+    steps = [
+      'Tap the <strong>⋮ menu</strong> icon in the top right of Chrome',
+      'Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>',
+      'Tap <strong>Install</strong> to confirm'
+    ];
+  }
+  stepsEl.innerHTML = steps.map((txt, i) => `
+    <div class="install-step">
+      <div class="install-step-num">${i+1}</div>
+      <div class="install-step-text">${txt}</div>
+    </div>
+  `).join('');
+
+  // Auto-open on first visit (after card has loaded — give it a sec)
+  const seenKey = 'install_guide_seen';
+  const dismissedForever = localStorage.getItem(seenKey) === 'never';
+  if (!dismissedForever && !localStorage.getItem(seenKey)) {
+    setTimeout(() => openInstallGuide(), 3500);
+  }
+})();
+
+function openInstallGuide() {
+  document.getElementById('install-overlay').classList.add('visible');
+}
+function closeInstallGuide(forever) {
+  document.getElementById('install-overlay').classList.remove('visible');
+  localStorage.setItem('install_guide_seen', forever ? 'never' : 'yes');
 }
 
 // ── SERVICE WORKER ──
